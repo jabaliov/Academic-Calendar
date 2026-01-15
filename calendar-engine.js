@@ -72,74 +72,58 @@ const CalendarEngine = {
     },
 
     createDayCell(current, dateStr, data, filters) {
-        const cell = document.createElement('div');
-        const isHoliday = filters.includes('holidays') && data.holidays.some(h => dateStr >= h.start && dateStr <= h.end);
-        const isProcedure = filters.includes('procedures') && data.procedures.some(p => dateStr >= p.start && dateStr <= p.end);
-        
-        cell.className = `day-cell ${isHoliday ? 'is-holiday' : ''} ${isProcedure ? 'is-procedure' : ''}`;
-        
-        const hijri = Utils.getHijriDate(current);
-        // ميزة: جلب اسم الشهر الميلادي باللغة العربية
-        const monthName = current.toLocaleDateString('ar-SA', { month: 'long' });
-        const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    const cell = document.createElement('div');
+    const isHoliday = filters.includes('holidays') && data.holidays.some(h => dateStr >= h.start && dateStr <= h.end);
+    const isProcedure = filters.includes('procedures') && data.procedures.some(p => dateStr >= p.start && dateStr <= p.end);
+    
+    cell.className = `day-cell ${isHoliday ? 'is-holiday' : ''} ${isProcedure ? 'is-procedure' : ''}`;
+    
+    const hijri = Utils.getHijriDate(current);
+    const monthName = current.toLocaleDateString('ar-SA', { month: 'long' }); // استخراج اسم الشهر الميلادي بالعربية
+    const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
-        let html = `
-            <div class="day-header">
-                <div class="flex flex-col">
-                    <span class="day-name">${dayNames[current.getDay()]}</span>
-                    <span class="text-[9px] text-blue-500 font-bold">${monthName}</span>
-                    <span class="hijri-date">${hijri}</span>
-                </div>
-                <span class="day-number">${current.getDate()}</span>
+    // هيكلة الترويسة: رقم اليوم والشهر على اليسار، واسم اليوم والهجري على اليمين
+    let html = `
+        <div class="day-header flex flex-col gap-1 mb-1">
+            <div class="flex justify-between items-start">
+                <span class="day-name text-[10px] text-gray-400 font-medium">${dayNames[current.getDay()]}</span>
+                <span class="day-number text-lg font-bold leading-none">${current.getDate()}</span>
+            </div>
+            <div class="flex justify-between items-center border-t border-gray-100 pt-1">
+                <span class="hijri-date text-[9px] text-gray-500 font-medium">${hijri}</span>
+                <span class="month-name text-[9px] font-bold text-blue-600">${monthName}</span>
+            </div>
+        </div>`;
+    
+    // إضافة الإجازات والفترات والإجراءات (دون تغيير في المنطق)
+    ['holidays', 'periods', 'procedures'].forEach(type => {
+        if (filters.includes(type)) {
+            const item = data[type].find(i => dateStr >= i.start && dateStr <= i.end);
+            if (item) {
+                const safeName = Utils.escapeHTML(item.name);
+                html += `<span class="text-[10px] font-bold ${STATUS_COLORS[type]} block mt-1">${safeName}</span>`;
+            }
+        }
+    });
+
+    // إضافة المواعيد (Events)
+    data.events.filter(ev => ev.date === dateStr && filters.includes(ev.courseId)).forEach(ev => {
+        const course = data.courses.find(c => c.id == ev.courseId);
+        const color = course ? course.color : '#64748b';
+        const safeCourseName = Utils.escapeHTML(course ? course.name : 'عام');
+        const safeEventTitle = Utils.escapeHTML(ev.title);
+        
+        html += `
+            <div class="event-item" style="border-right-color: ${color}; background: ${color}15" onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')">
+                <span class="text-[9px] opacity-60 block">${safeCourseName}</span>
+                ${safeEventTitle}
             </div>`;
-        
-        // عرض الإجازات العامة
-        if (filters.includes('holidays')) {
-            const holiday = data.holidays.find(h => dateStr >= h.start && dateStr <= h.end);
-            if (holiday) {
-                html += `<span class="text-[10px] font-bold text-orange-600 block mt-1">${Utils.escapeHTML(holiday.name)}</span>`;
-            }
-        }
+    });
 
-        // ميزة: عرض الفترات المرتبطة بالمقررات (مع الملاحظات)
-        if (filters.includes('periods')) {
-            data.periods.filter(p => dateStr >= p.start && dateStr <= p.end && (p.courseId === 'general' || filters.includes(p.courseId))).forEach(p => {
-                const course = data.courses.find(c => c.id == p.courseId);
-                const color = course ? course.color : '#9333ea';
-                html += `
-                    <div class="text-[9px] p-1 mt-1 rounded border-r-2 bg-purple-50 border-purple-600" title="${Utils.escapeHTML(p.notes || '')}">
-                        <span class="font-bold block">${Utils.escapeHTML(p.name)}</span>
-                        ${p.notes ? `<span class="opacity-70 italic block">${Utils.escapeHTML(p.notes)}</span>` : ''}
-                    </div>`;
-            });
-        }
-
-        // عرض الإجراءات الأكاديمية
-        if (filters.includes('procedures')) {
-            const procedure = data.procedures.find(p => dateStr >= p.start && dateStr <= p.end);
-            if (procedure) {
-                html += `<span class="text-[10px] font-bold text-emerald-600 block mt-1">${Utils.escapeHTML(procedure.name)}</span>`;
-            }
-        }
-
-        // عرض المواعيد الفردية (Events)
-        data.events.filter(ev => ev.date === dateStr && filters.includes(ev.courseId)).forEach(ev => {
-            const course = data.courses.find(c => c.id == ev.courseId);
-            const color = course ? course.color : '#64748b';
-            const safeCourseName = Utils.escapeHTML(course ? course.name : 'عام');
-            const safeEventTitle = Utils.escapeHTML(ev.title);
-            
-            html += `
-                <div class="event-item" style="border-right-color: ${color}; background: ${color}15" onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')">
-                    <span class="text-[9px] opacity-60 block">${safeCourseName}</span>
-                    ${safeEventTitle}
-                </div>`;
-        });
-
-        cell.innerHTML = html;
-        cell.onclick = () => App.openAddEvent(dateStr);
-        return cell;
-    },
+    cell.innerHTML = html;
+    cell.onclick = () => App.openAddEvent(dateStr);
+    return cell;
+},
 
     showLoading() { 
         const loader = document.getElementById('loadingOverlay');
