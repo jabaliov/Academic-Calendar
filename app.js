@@ -278,24 +278,39 @@ const App = {
         }
     },
 
-    handleFileImport(e) {
-        const reader = new FileReader();
-        const mode = e.target.dataset.mode;
-        
-        reader.onload = async (event) => {
-            try {
-                const imported = JSON.parse(event.target.result);
-                if (mode === 'full') {
-                    this.data = { ...DEFAULT_DATA, ...imported };
+   handleFileImport(e) {
+    const reader = new FileReader();
+    const mode = e.target.dataset.mode;
+    
+    reader.onload = async (event) => {
+        try {
+            const imported = JSON.parse(event.target.result);
+            if (mode === 'full') {
+                this.data = { ...DEFAULT_DATA, ...imported };
+            } else {
+                // منطق استيراد مقرر معين (الميزة المُعادة)
+                if (imported.type !== 'course_package') {
+                    return UIManager.showToast('الملف المرفوع غير صالح لمقرر منفرد', 'error');
                 }
-                await Storage.save(this.data);
-                UIManager.showToast('تم استيراد البيانات بنجاح، جاري التحديث...', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } catch (err) { 
-                UIManager.showToast('الملف المرفوع غير صالح', 'error');
+                // إضافة المقرر إذا لم يكن موجوداً
+                if (!this.data.courses.find(c => c.id == imported.course.id)) {
+                    this.data.courses.push(imported.course);
+                }
+                // دمج المواعيد ومنع التكرار
+                imported.events.forEach(ev => {
+                    if (!this.data.events.find(old => old.start === ev.start && old.title === ev.title)) {
+                        this.data.events.push(ev);
+                    }
+                });
             }
-        };
-        reader.readAsText(e.target.files[0]);
+            await Storage.save(this.data);
+            UIManager.showToast('تم استيراد البيانات بنجاح، جاري التحديث...', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } catch (err) { 
+            UIManager.showToast('خطأ في قراءة أو دمج الملف', 'error');
+        }
+    };
+    reader.readAsText(e.target.files[0]);
     }
 };
 
