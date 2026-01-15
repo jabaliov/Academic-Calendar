@@ -60,7 +60,7 @@ const App = {
         this.data.procedures.forEach(pr => UIManager.createRow('proceduresList', 'procedure', pr));
     },
 
-    handleSettingsSubmit(e) {
+    async handleSettingsSubmit(e) {
         e.preventDefault();
         this.data.config.startDate = document.getElementById('startDate').value;
         this.data.config.endDate = document.getElementById('endDate').value;
@@ -80,7 +80,7 @@ const App = {
             }));
         });
 
-        Storage.save(this.data);
+        await Storage.save(this.data);
         this.renderAll();
         UIManager.toggleModal('settingsModal', false);
     },
@@ -91,7 +91,7 @@ const App = {
         UIManager.toggleModal('eventModal', true);
     },
 
-    handleEventSubmit(e) {
+    async handleEventSubmit(e) {
         e.preventDefault();
         this.data.events.push({
             id: Utils.generateId('ev'),
@@ -100,13 +100,13 @@ const App = {
             date: document.getElementById('eventDate').value,
             notes: ''
         });
-        Storage.save(this.data);
+        await Storage.save(this.data);
         this.renderAll();
         UIManager.toggleModal('eventModal', false);
         e.target.reset();
     },
 
-    showEventDetail(id) {
+    async showEventDetail(id) {
         const ev = this.data.events.find(e => e.id === id);
         if (!ev) return;
         const course = this.data.courses.find(c => c.id == ev.courseId);
@@ -121,7 +121,7 @@ const App = {
 
         document.getElementById('deleteEvent').onclick = () => {
             this.data.events = this.data.events.filter(e => e.id !== id);
-            Storage.save(this.data);
+            await Storage.save(this.data);
             this.renderAll();
             UIManager.toggleModal('detailModal', false);
         };
@@ -129,7 +129,7 @@ const App = {
         document.getElementById('saveEditEvent').onclick = () => {
             ev.title = document.getElementById('editTitle').value;
             ev.notes = document.getElementById('editNotes').value;
-            Storage.save(this.data);
+            await Storage.save(this.data);
             this.renderAll();
             UIManager.toggleModal('detailModal', false);
         };
@@ -156,7 +156,7 @@ const App = {
         picker.click();
     },
 
-    handleFileImport(e) {
+    async handleFileImport(e) {
         const reader = new FileReader();
         const mode = e.target.dataset.mode;
         reader.onload = (event) => {
@@ -171,7 +171,7 @@ const App = {
                         if (!this.data.events.find(old => old.date === ev.date && old.title === ev.title)) this.data.events.push(ev);
                     });
                 }
-                Storage.save(this.data);
+                await Storage.save(this.data);
                 location.reload();
             } catch (err) { alert('خطأ في قراءة الملف'); }
         };
