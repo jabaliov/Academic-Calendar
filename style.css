@@ -164,3 +164,38 @@ body {
 #settingsModal > div {
     animation: modalIn 0.3s ease-out;
 }
+
+/* تحسين حاوية الصفوف المضافة ديناميكياً */
+#coursesList > div, #holidaysList > div, #periodsList > div {
+    display: flex;
+    flex-wrap: wrap; /* للسماح بالعناصر بالنزول لسطر جديد في الشاشات الصغيرة */
+    gap: 8px;
+    align-items: center;
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+/* تأكد من أن المدخلات تأخذ مساحة كافية ولا تتقلص */
+.item-start, .item-end {
+    flex: 1;
+    min-width: 120px;
+}
+
+.item-name {
+    flex: 2;
+    min-width: 150px;
+}
+
+/* إصلاح مشكلة قص النافذة المنبثقة */
+#settingsModal > div {
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#settingsForm {
+    overflow-y: auto;
+    padding-right: 4px;
+}
