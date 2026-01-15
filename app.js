@@ -1,15 +1,15 @@
 const App = {
-    data: null, // سنقوم بتحميل البيانات لاحقاً
+    data: null,
 
     async init() {
-        // تحميل البيانات بشكل غير متزامن
+        // تحميل البيانات بشكل غير متزامن عند تشغيل التطبيق
         this.data = await Storage.load();
         this.bindEvents();
         this.renderAll();
     },
 
     renderAll() {
-        if (!this.data) return; // صمام أمان
+        if (!this.data) return;
         
         if (this.data.config.startDate) {
             document.getElementById('startDate').value = this.data.config.startDate;
@@ -29,10 +29,12 @@ const App = {
             UIManager.toggleModal('settingsModal', true);
         };
         document.getElementById('addEventBtn').onclick = () => this.openAddEvent(Utils.formatDate(new Date()));
+        
         document.querySelectorAll('.close-modal').forEach(b => b.onclick = () => {
             UIManager.toggleModal('settingsModal', false);
             UIManager.toggleModal('eventModal', false);
         });
+        
         document.querySelector('.close-detail').onclick = () => UIManager.toggleModal('detailModal', false);
 
         document.getElementById('addCourseRow').onclick = () => UIManager.createRow('coursesList', 'course');
@@ -40,8 +42,9 @@ const App = {
         document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
         document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
 
-        document.getElementById('settingsForm').onsubmit = (e) => this.handleSettingsSubmit(e);
-        document.getElementById('eventForm').onsubmit = (e) => this.handleEventSubmit(e);
+        // الدوال التي تتعامل مع الحفظ يجب أن تكون async
+        document.getElementById('settingsForm').onsubmit = async (e) => await this.handleSettingsSubmit(e);
+        document.getElementById('eventForm').onsubmit = async (e) => await this.handleEventSubmit(e);
 
         document.getElementById('exportFull').onclick = () => Utils.downloadJSON(this.data, 'التقويم_الجامعي_الكامل.json');
         document.getElementById('exportCourse').onclick = () => this.handleCourseExport();
@@ -49,11 +52,14 @@ const App = {
         document.getElementById('importCourseBtn').onclick = () => this.triggerImport('merge');
         document.getElementById('universalFilePicker').onchange = (e) => this.handleFileImport(e);
         
-        document.getElementById('resetAllData').onclick = () => Storage.clear();
+        document.getElementById('resetAllData').onclick = async () => await Storage.clear();
     },
 
     prepareSettingsForm() {
-        ['coursesList', 'holidaysList', 'periodsList', 'proceduresList'].forEach(id => document.getElementById(id).innerHTML = '');
+        ['coursesList', 'holidaysList', 'periodsList', 'proceduresList'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.innerHTML = '';
+        });
         this.data.courses.forEach(c => UIManager.createRow('coursesList', 'course', c));
         this.data.holidays.forEach(h => UIManager.createRow('holidaysList', 'holiday', h));
         this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p));
@@ -106,7 +112,7 @@ const App = {
         e.target.reset();
     },
 
-    async showEventDetail(id) {
+    showEventDetail(id) {
         const ev = this.data.events.find(e => e.id === id);
         if (!ev) return;
         const course = this.data.courses.find(c => c.id == ev.courseId);
@@ -119,14 +125,16 @@ const App = {
 
         UIManager.toggleModal('detailModal', true);
 
-        document.getElementById('deleteEvent').onclick = () => {
+        // تصحيح: إضافة async هنا للتعامل مع الـ await بالداخل
+        document.getElementById('deleteEvent').onclick = async () => {
             this.data.events = this.data.events.filter(e => e.id !== id);
             await Storage.save(this.data);
             this.renderAll();
             UIManager.toggleModal('detailModal', false);
         };
 
-        document.getElementById('saveEditEvent').onclick = () => {
+        // تصحيح: إضافة async هنا للتعامل مع الـ await بالداخل
+        document.getElementById('saveEditEvent').onclick = async () => {
             ev.title = document.getElementById('editTitle').value;
             ev.notes = document.getElementById('editNotes').value;
             await Storage.save(this.data);
@@ -137,6 +145,8 @@ const App = {
 
     updateFiltersUI() {
         const container = document.getElementById('filterContainer');
+        if(!container) return;
+        
         let html = `
             <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="holidays" class="w-4 h-4"><span>الإجازات</span></label>
             <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="periods" class="w-4 h-4"><span>الفترات</span></label>
@@ -152,14 +162,18 @@ const App = {
 
     triggerImport(mode) {
         const picker = document.getElementById('universalFilePicker');
-        picker.dataset.mode = mode;
-        picker.click();
+        if(picker) {
+            picker.dataset.mode = mode;
+            picker.click();
+        }
     },
 
-    async handleFileImport(e) {
+    handleFileImport(e) {
         const reader = new FileReader();
         const mode = e.target.dataset.mode;
-        reader.onload = (event) => {
+        
+        // تصحيح: إضافة async هنا لأننا نستخدم await بالداخل
+        reader.onload = async (event) => {
             try {
                 const imported = JSON.parse(event.target.result);
                 if (mode === 'full') {
@@ -187,14 +201,12 @@ const App = {
     }
 };
 
-
-
+// تشغيل التطبيق
 App.init();
 
-// في ملف app.js
+// إعداد Service Worker
 if ('serviceWorker' in navigator) {
     let refreshing = false;
-    // الاستماع لتغيير المتحكم (Controller) لضمان إعادة التحميل مرة واحدة فقط
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (refreshing) return;
         refreshing = true;
@@ -205,10 +217,8 @@ if ('serviceWorker' in navigator) {
         reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             installingWorker.onstatechange = () => {
-                // التأكد من أن العامل الجديد تم تنصيبه وأن هناك عامل قديم مسيطر حالياً
                 if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
                     if (confirm("توجد تحديثات جديدة للتقويم، هل تود التحديث الآن؟")) {
-                        // إرسال أمر للعامل الجديد ليتخطى مرحلة الانتظار
                         installingWorker.postMessage({ type: 'SKIP_WAITING' });
                     }
                 }
