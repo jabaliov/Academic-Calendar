@@ -190,15 +190,25 @@ const App = {
 
 App.init();
 
+// في ملف app.js
 if ('serviceWorker' in navigator) {
+    let refreshing = false;
+    // الاستماع لتغيير المتحكم (Controller) لضمان إعادة التحميل مرة واحدة فقط
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+    });
+
     navigator.serviceWorker.register('sw.js').then(reg => {
         reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             installingWorker.onstatechange = () => {
+                // التأكد من أن العامل الجديد تم تنصيبه وأن هناك عامل قديم مسيطر حالياً
                 if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // إذا وجد نسخة جديدة، يخبر المستخدم أو يحدث تلقائياً
-                    if(confirm("توجد تحديثات جديدة للتقويم، هل تود التحديث الآن؟")) {
-                        location.reload();
+                    if (confirm("توجد تحديثات جديدة للتقويم، هل تود التحديث الآن؟")) {
+                        // إرسال أمر للعامل الجديد ليتخطى مرحلة الانتظار
+                        installingWorker.postMessage({ type: 'SKIP_WAITING' });
                     }
                 }
             };
