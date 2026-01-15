@@ -54,9 +54,19 @@ const CalendarEngine = {
         
         cell.className = `day-cell ${isHoliday ? 'is-holiday' : ''} ${isProcedure ? 'is-procedure' : ''}`;
         
-        let html = `<div class="day-header"><div class="flex flex-col"><span class="day-name">${['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'][current.getDay()]}</span><span class="hijri-date">${Utils.getHijriDate(current)}</span></div><span class="day-number">${current.getDate()}</span></div>`;
+        // جلب التاريخ الهجري
+        const hijri = Utils.getHijriDate(current);
+        const dayName = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][current.getDay()];
+
+        let html = `
+            <div class="day-header">
+                <div class="flex flex-col">
+                    <span class="day-name">${dayName}</span>
+                    <span class="hijri-date">${hijri}</span>
+                </div>
+                <span class="day-number">${current.getDate()}</span>
+            </div>`;
         
-        // وسم الحالات (إجازات، فترات، إجراءات)
         ['holidays', 'periods', 'procedures'].forEach(type => {
             if (filters.includes(type)) {
                 const item = data[type].find(i => dateStr >= i.start && dateStr <= i.end);
@@ -64,7 +74,6 @@ const CalendarEngine = {
             }
         });
 
-        // المواعيد
         data.events.filter(ev => ev.date === dateStr && filters.includes(ev.courseId)).forEach(ev => {
             const course = data.courses.find(c => c.id == ev.courseId);
             const color = course ? course.color : '#64748b';
@@ -77,10 +86,15 @@ const CalendarEngine = {
     },
 
     showLoading() { document.getElementById('loadingOverlay').classList.remove('fade-out'); },
-    hideLoading() { setTimeout(() => document.getElementById('loadingOverlay').classList.add('fade-out'), 300); },
+    hideLoading() { setTimeout(() => {
+        const loader = document.getElementById('loadingOverlay');
+        if(loader) loader.classList.add('fade-out');
+    }, 300); },
     updateProgressBar(p, t) {
         const progress = Math.min(Math.round((p / t) * 100), 100);
-        document.getElementById('loadingBar').style.width = `${progress}%`;
-        document.getElementById('loadingText').innerText = `${progress}%`;
+        const bar = document.getElementById('loadingBar');
+        const text = document.getElementById('loadingText');
+        if(bar) bar.style.width = `${progress}%`;
+        if(text) text.innerText = `${progress}%`;
     }
 };
