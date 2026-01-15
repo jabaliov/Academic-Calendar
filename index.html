@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مخطط الجامعي الذكي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-['Tajawal'] min-h-screen">
+
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <i data-lucide="calendar-days" class="text-blue-600 w-8 h-8"></i>
+                <h1 class="text-xl font-bold text-gray-900">مخططي الجامعي</h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="openSettings" class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span>الإعدادات</span>
+                </button>
+                <button id="addEventBtn" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    <span>إضافة موعد</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <section class="mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <h2 class="text-sm font-semibold text-gray-500 mb-3 flex items-center gap-2">
+                <i data-lucide="filter" class="w-4 h-4"></i> تصفية العرض:
+            </h2>
+            <div id="filterContainer" class="flex flex-wrap gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked value="holidays" class="w-4 h-4 text-blue-600 rounded">
+                    <span>الإجازات</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked value="periods" class="w-4 h-4 text-blue-600 rounded">
+                    <span>الفترات الهامة</span>
+                </label>
+                </div>
+        </section>
+
+        <div id="calendarGrid" class="space-y-6">
+            <div class="text-center py-20 text-gray-400">
+                <i data-lucide="calendar" class="w-16 h-16 mx-auto mb-4 opacity-20"></i>
+                <p>الرجاء ضبط تاريخ بداية ونهاية الفصل من الإعدادات</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h3 class="text-xl font-bold">إعدادات الفصل الدراسي</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <form id="settingsForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">تاريخ بداية الفصل</label>
+                        <input type="date" id="startDate" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">تاريخ نهاية الفصل</label>
+                        <input type="date" id="endDate" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-medium">المقررات الدراسية</label>
+                        <button type="button" id="addCourseRow" class="text-blue-600 text-sm font-bold">+ إضافة مقرر</button>
+                    </div>
+                    <div id="coursesList" class="space-y-2">
+                        </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-orange-600">الإجازات</label>
+                        <div id="holidaysList" class="space-y-2"></div>
+                        <button type="button" id="addHolidayRow" class="mt-2 text-sm text-orange-600">+ إضافة إجازة</button>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-purple-600">فترات هامة (اختبارات...)</label>
+                        <div id="periodsList" class="space-y-2"></div>
+                        <button type="button" id="addPeriodRow" class="mt-2 text-sm text-purple-600">+ إضافة فترة</button>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t">
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">
+                        حفظ جميع الإعدادات وتحديث التقويم
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="eventModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        </div>
+
+    <script>
+        // تفعيل الأيقونات
+        lucide.createIcons();
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
