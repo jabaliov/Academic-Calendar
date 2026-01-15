@@ -39,7 +39,8 @@ const App = {
 
         document.getElementById('addCourseRow').onclick = () => UIManager.createRow('coursesList', 'course');
         document.getElementById('addHolidayRow').onclick = () => UIManager.createRow('holidaysList', 'holiday');
-        document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
+        // تمرير قائمة المقررات عند إضافة فترة جديدة
+        document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period', {}, this.data.courses);
         document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
 
         document.getElementById('settingsForm').onsubmit = async (e) => await this.handleSettingsSubmit(e);
@@ -61,14 +62,23 @@ const App = {
         });
         this.data.courses.forEach(c => UIManager.createRow('coursesList', 'course', c));
         this.data.holidays.forEach(h => UIManager.createRow('holidaysList', 'holiday', h));
-        this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p));
+        // تمرير المقررات عند بناء صفوف الفترات الموجودة مسبقاً
+        this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p, this.data.courses));
         this.data.procedures.forEach(pr => UIManager.createRow('proceduresList', 'procedure', pr));
     },
 
     async handleSettingsSubmit(e) {
         e.preventDefault();
-        this.data.config.startDate = document.getElementById('startDate').value;
-        this.data.config.endDate = document.getElementById('endDate').value;
+        const startSem = document.getElementById('startDate').value;
+        const endSem = document.getElementById('endDate').value;
+
+        // ميزة: التأكد من أن نهاية الفصل بعد بدايته
+        if (startSem >= endSem) {
+            return UIManager.showToast('تاريخ نهاية الفصل يجب أن يكون بعد تاريخ البداية', 'error');
+        }
+
+        this.data.config.startDate = startSem;
+        this.data.config.endDate = endSem;
         
         this.data.courses = Array.from(document.querySelectorAll('#coursesList > .dynamic-row')).map(row => ({
             id: row.dataset.id || Utils.generateId('c'),
@@ -77,16 +87,48 @@ const App = {
             color: row.querySelector('.course-color').value
         }));
 
-        ['holidays', 'periods', 'procedures'].forEach(type => {
-            this.data[type] = Array.from(document.querySelectorAll(`#${type}List > .dynamic-row`)).map(row => ({
-                name: row.querySelector('.item-name').value,
-                start: row.querySelector('.item-start').value,
-                end: row.querySelector('.item-end').value
-            }));
-        });
+        // دالة مساعدة للتحقق من النطاق الزمني
+        const isOutsideRange = (date) => date < startSem || date > endSem;
+
+        const categories = [
+            { id: 'holidays', label: 'الإجازات' },
+            { id: 'periods', label: 'الفترات' },
+            { id: 'procedures', label: 'الإجراءات' }
+        ];
+
+        for (const cat of categories) {
+            const rows = Array.from(document.querySelectorAll(`#${cat.id}List > .dynamic-row`));
+            const items = [];
+            
+            for (const row of rows) {
+                const s = row.querySelector('.item-start').value;
+                const e = row.querySelector('.item-end').value;
+
+                // ميزة: التحقق من وقوع التواريخ ضمن نطاق الفصل الدراسي
+                if (isOutsideRange(s) || isOutsideRange(e)) {
+                    UIManager.showToast(`خطأ: تاريخ في ${cat.label} يقع خارج نطاق الفصل الدراسي`, 'error');
+                    return; // إيقاف الحفظ
+                }
+
+                const item = {
+                    name: row.querySelector('.item-name').value,
+                    start: s,
+                    end: e
+                };
+
+                // ميزة: حفظ بيانات المقرر والملاحظات للفترات
+                if (cat.id === 'periods') {
+                    item.courseId = row.querySelector('.item-course').value;
+                    item.notes = row.querySelector('.item-notes').value;
+                }
+                
+                items.push(item);
+            }
+            this.data[cat.id] = items;
+        }
 
         await Storage.save(this.data);
-        UIManager.showToast('تم حفظ الإعدادات بنجاح', 'success'); // تم تصحيح الفاصلة هنا
+        UIManager.showToast('تم حفظ الإعدادات بنجاح', 'success');
         this.renderAll();
         UIManager.toggleModal('settingsModal', false);
     },
@@ -99,15 +141,22 @@ const App = {
 
     async handleEventSubmit(e) {
         e.preventDefault();
+        const eventDate = document.getElementById('eventDate').value;
+
+        // ميزة: التحقق من تاريخ الموعد الجديد
+        if (eventDate < this.data.config.startDate || eventDate > this.data.config.endDate) {
+            return UIManager.showToast('تاريخ الموعد خارج نطاق الفصل الدراسي المعتمد', 'error');
+        }
+
         this.data.events.push({
             id: Utils.generateId('ev'),
             courseId: document.getElementById('eventCourse').value,
             title: document.getElementById('eventTitle').value,
-            date: document.getElementById('eventDate').value,
+            date: eventDate,
             notes: ''
         });
         await Storage.save(this.data);
-        UIManager.showToast('تمت إضافة الموعد للجدول', 'success'); // تم تصحيح الفاصلة هنا
+        UIManager.showToast('تمت إضافة الموعد للجدول', 'success');
         this.renderAll();
         UIManager.toggleModal('eventModal', false);
         e.target.reset();
@@ -208,6 +257,7 @@ const App = {
 
 App.init();
 
+// منطق Service Worker لتحديث التطبيق
 if ('serviceWorker' in navigator) {
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
