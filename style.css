@@ -1,0 +1,166 @@
+/* تنسيقات عامة وتجهيز الخط */
+:root {
+    --primary-color: #2563eb;
+    --holiday-bg: #fff7ed;
+    --holiday-border: #fdba74;
+    --period-bg: #f3e8ff;
+    --period-border: #d8b4fe;
+    --today-border: #2563eb;
+}
+
+body {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* تحسين شكل السكرول بار */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* تنسيق حاوية الأسبوع */
+.week-row {
+    display: grid;
+    grid-template-columns: 80px repeat(5, 1fr); /* عمود لرقم الأسبوع و 5 أعمدة للأيام */
+    gap: 1px;
+    background-color: #e2e8f0; /* لون الحدود بين الخلايا */
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* خلية عنوان الأسبوع (الأسبوع 1، 2...) */
+.week-label {
+    background-color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #64748b;
+    border-left: 1px solid #e2e8f0;
+    padding: 10px;
+    font-size: 0.85rem;
+}
+
+/* خلية اليوم */
+.day-cell {
+    background-color: white;
+    min-height: 120px;
+    padding: 8px;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.day-cell:hover {
+    background-color: #f1f5f9;
+}
+
+/* ترويسة اليوم (الاسم والرقم) */
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 4px;
+}
+
+.day-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.day-number {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* تنسيق المواعيد داخل الخلية */
+.event-item {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border-right: 3px solid;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: transform 0.1s;
+}
+
+.event-item:hover {
+    transform: scale(1.02);
+}
+
+/* حالة الإجازة */
+.is-holiday {
+    background-color: var(--holiday-bg) !important;
+}
+.holiday-tag {
+    color: #c2410c;
+    font-size: 0.7rem;
+    font-weight: bold;
+    display: block;
+    margin-top: 4px;
+}
+
+/* حالة الفترة الهامة */
+.is-period {
+    background-color: var(--period-bg) !important;
+}
+
+/* تمييز اليوم الحالي */
+.is-today {
+    box-shadow: inset 0 0 0 2px var(--today-border);
+}
+
+/* تنسيقات الموبايل */
+@media (max-width: 768px) {
+    .week-row {
+        grid-template-columns: 1fr; /* تحويل الشبكة إلى عمود واحد في الجوال */
+        background-color: transparent;
+        border: none;
+        gap: 10px;
+    }
+    
+    .week-label {
+        border: none;
+        border-radius: 8px;
+        padding: 5px;
+        background-color: #334155;
+        color: white;
+    }
+
+    .day-cell {
+        min-height: auto;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .day-header {
+        border-bottom: none;
+    }
+}
+
+/* أنيميشن للنوافذ المنبثقة */
+@keyframes modalIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#settingsModal > div {
+    animation: modalIn 0.3s ease-out;
+}
