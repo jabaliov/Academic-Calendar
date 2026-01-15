@@ -1,6 +1,6 @@
 const CalendarEngine = {
-    async render(universityData) {
-        const { startDate, endDate } = universityData.config;
+    async render(data) {
+        const { startDate, endDate } = data.config;
         if (!startDate || !endDate) return this.hideLoading();
 
         this.showLoading();
@@ -10,26 +10,77 @@ const CalendarEngine = {
 
         let current = new Date(startDate);
         const last = new Date(endDate);
-        const activeFilters = Array.from(document.getElementById('filterContainer').querySelectorAll('input:checked')).map(i => i.value);
+        const totalDays = Math.ceil((last - current) / (1000 * 60 * 60 * 24)) || 1;
+        let processedDays = 0;
 
         while (current.getDay() !== 0) current.setDate(current.getDate() - 1);
+        const activeFilters = Array.from(document.getElementById('filterContainer').querySelectorAll('input:checked')).map(i => i.value);
         let weekNumber = 1;
 
         while (current <= last) {
+            processedDays += 7;
+            this.updateProgressBar(processedDays, totalDays);
+
             const weekRow = document.createElement('div');
             weekRow.className = 'week-row';
-            // ... (منطق بناء الأيام والأسابيع كما في النسخة السابقة مع استخدام Utils) ...
             
-            // ملاحظة: يتم زيادة اليوم بمقدار 1 في نهاية حلقة الأيام
+            const weekLabel = document.createElement('div');
+            weekLabel.className = 'week-label';
+            weekLabel.innerHTML = `<span>أسبوع</span><span class="text-xl">${weekNumber}</span>`;
+            weekRow.appendChild(weekLabel);
+
+            for (let i = 0; i < 7; i++) {
+                const dateStr = Utils.formatDate(current);
+                if (current.getDay() < 5) {
+                    const cell = this.createDayCell(current, dateStr, data, activeFilters);
+                    weekRow.appendChild(cell);
+                }
+                current.setDate(current.getDate() + 1);
+            }
             fragment.appendChild(weekRow);
             weekNumber++;
             if (weekNumber % 4 === 0) await new Promise(r => requestAnimationFrame(r));
         }
+
         grid.appendChild(fragment);
         this.hideLoading();
         lucide.createIcons();
     },
 
+    createDayCell(current, dateStr, data, filters) {
+        const cell = document.createElement('div');
+        const isHoliday = filters.includes('holidays') && data.holidays.some(h => dateStr >= h.start && dateStr <= h.end);
+        const isProcedure = filters.includes('procedures') && data.procedures.some(p => dateStr >= p.start && dateStr <= p.end);
+        
+        cell.className = `day-cell ${isHoliday ? 'is-holiday' : ''} ${isProcedure ? 'is-procedure' : ''}`;
+        
+        let html = `<div class="day-header"><div class="flex flex-col"><span class="day-name">${['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'][current.getDay()]}</span><span class="hijri-date">${Utils.getHijriDate(current)}</span></div><span class="day-number">${current.getDate()}</span></div>`;
+        
+        // وسم الحالات (إجازات، فترات، إجراءات)
+        ['holidays', 'periods', 'procedures'].forEach(type => {
+            if (filters.includes(type)) {
+                const item = data[type].find(i => dateStr >= i.start && dateStr <= i.end);
+                if (item) html += `<span class="text-[10px] font-bold ${STATUS_COLORS[type]} block mt-1">${item.name}</span>`;
+            }
+        });
+
+        // المواعيد
+        data.events.filter(ev => ev.date === dateStr && filters.includes(ev.courseId)).forEach(ev => {
+            const course = data.courses.find(c => c.id == ev.courseId);
+            const color = course ? course.color : '#64748b';
+            html += `<div class="event-item" style="border-right-color: ${color}; background: ${color}15" onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')"><span class="text-[9px] opacity-60 block">${course ? course.name : 'عام'}</span>${ev.title}</div>`;
+        });
+
+        cell.innerHTML = html;
+        cell.onclick = () => App.openAddEvent(dateStr);
+        return cell;
+    },
+
     showLoading() { document.getElementById('loadingOverlay').classList.remove('fade-out'); },
-    hideLoading() { setTimeout(() => document.getElementById('loadingOverlay').classList.add('fade-out'), 300); }
+    hideLoading() { setTimeout(() => document.getElementById('loadingOverlay').classList.add('fade-out'), 300); },
+    updateProgressBar(p, t) {
+        const progress = Math.min(Math.round((p / t) * 100), 100);
+        document.getElementById('loadingBar').style.width = `${progress}%`;
+        document.getElementById('loadingText').innerText = `${progress}%`;
+    }
 };
