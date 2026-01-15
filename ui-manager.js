@@ -8,18 +8,15 @@ const UIManager = {
     },
 
     // إنشاء صف جديد في الإعدادات (مقرر، إجازة، فترة، أو إجراء)
-    createRow: (containerId, type, data = {}, courses = []) => {
+    createRow: (containerId, type, data = {}) => {
         const container = document.getElementById(containerId);
         const div = document.createElement('div');
         div.className = 'dynamic-row flex flex-wrap gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mb-2';
         
-        // تأمين البيانات النصية لمنع ثغرات XSS
         const safeName = Utils.escapeHTML(data.name || '');
         const safeCode = Utils.escapeHTML(data.code || '');
-        const safeNotes = Utils.escapeHTML(data.notes || '');
 
         if (type === 'course') {
-            // واجهة إضافة مقرر دراسي
             div.innerHTML = `
                 <div class="field-group flex-[2]"><label class="text-[10px] text-gray-400">اسم المقرر</label>
                 <input type="text" placeholder="اسم المقرر" value="${safeName}" class="course-name w-full border rounded-lg p-2" required></div>
@@ -28,25 +25,8 @@ const UIManager = {
                 <div class="field-group w-12 flex-none"><label class="text-[10px] text-gray-400">اللون</label>
                 <input type="color" value="${data.color || '#3b82f6'}" class="course-color w-full h-10 rounded cursor-pointer border-none p-1"></div>
                 <button type="button" class="remove-row text-red-500 p-1 mt-4"><i data-lucide="trash-2"></i></button>`;
-        } else if (type === 'period') {
-            // ميزة: واجهة إضافة فترة مرتبطة بمقرر مع ملاحظات
-            const courseOptions = `<option value="general">فترة عامة (غير مرتبطة بمقرر)</option>` + 
-                                  courses.map(c => `<option value="${c.id}" ${data.courseId == c.id ? 'selected' : ''}>${Utils.escapeHTML(c.name)}</option>`).join('');
-            
-            div.innerHTML = `
-                <div class="field-group flex-[1.5]"><label class="text-[10px] text-gray-400">المسمى (مثلاً: كويز 1)</label>
-                <input type="text" placeholder="الاسم" value="${safeName}" class="item-name w-full border rounded p-2" required></div>
-                <div class="field-group flex-1"><label class="text-[10px] text-gray-400">المقرر المرتبط</label>
-                <select class="item-course w-full border rounded p-2 text-xs bg-white">${courseOptions}</select></div>
-                <div class="field-group flex-1"><label class="text-[10px] text-gray-400">من</label>
-                <input type="date" value="${data.start || ''}" class="item-start w-full border rounded p-1 text-xs" required></div>
-                <div class="field-group flex-1"><label class="text-[10px] text-gray-400">إلى</label>
-                <input type="date" value="${data.end || ''}" class="item-end w-full border rounded p-1 text-xs" required></div>
-                <div class="field-group w-full mt-1"><label class="text-[10px] text-gray-400">ملاحظات الفترة (تظهر عند تمرير الماوس في الجدول)</label>
-                <input type="text" placeholder="مثلاً: من 5 درجات، يغطي الفصل الأول..." value="${safeNotes}" class="item-notes w-full border rounded p-2 text-xs"></div>
-                <button type="button" class="remove-row text-red-500 p-1 mt-2"><i data-lucide="trash-2"></i></button>`;
         } else {
-            // واجهة الإجازات والإجراءات الأكاديمية
+            // الفترات الأكاديمية الآن عامة ولا ترتبط بمقرر
             div.innerHTML = `
                 <div class="field-group flex-[2]"><label class="text-[10px] text-gray-400">المسمى</label>
                 <input type="text" placeholder="الاسم" value="${safeName}" class="item-name w-full border rounded p-2" required></div>
@@ -56,17 +36,11 @@ const UIManager = {
                 <input type="date" value="${data.end || ''}" class="item-end w-full border rounded p-1 text-xs" required></div>
                 <button type="button" class="remove-row text-red-500 p-1 mt-4"><i data-lucide="trash-2"></i></button>`;
         }
-
         div.dataset.id = data.id || '';
         container.appendChild(div);
-        
-        // تفعيل الأيقونات للصف الجديد
         lucide.createIcons({ props: { class: 'w-4 h-4' }, target: div });
-        
-        // حذف الصف عند الضغط على زر الحذف
         div.querySelector('.remove-row').onclick = () => div.remove();
     },
-
     // تحديث قوائم اختيار المقررات في نافذة إضافة الموعد وفي قسم التصدير
     updateCourseSelects: (courses) => {
         const selects = [document.getElementById('eventCourse'), document.getElementById('exportCourseId')];
