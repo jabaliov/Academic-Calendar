@@ -10,16 +10,19 @@ const App = {
         if (this.data.config.startDate) {
             document.getElementById('startDate').value = this.data.config.startDate;
             document.getElementById('endDate').value = this.data.config.endDate;
-            CalendarEngine.render(this.data);
-            this.updateFiltersUI();
+            
+            // إصلاح: تحديث واجهة الفلاتر أولاً لكي يتمكن محرك التقويم من قراءتها
+            this.updateFiltersUI(); 
             UIManager.updateCourseSelects(this.data.courses);
+            
+            // ثم البدء في رسم التقويم
+            CalendarEngine.render(this.data);
         } else {
             CalendarEngine.hideLoading();
         }
     },
 
     bindEvents() {
-        // أزرار النوافذ
         document.getElementById('openSettings').onclick = () => {
             this.prepareSettingsForm();
             UIManager.toggleModal('settingsModal', true);
@@ -31,17 +34,14 @@ const App = {
         });
         document.querySelector('.close-detail').onclick = () => UIManager.toggleModal('detailModal', false);
 
-        // إضافة الصفوف
         document.getElementById('addCourseRow').onclick = () => UIManager.createRow('coursesList', 'course');
         document.getElementById('addHolidayRow').onclick = () => UIManager.createRow('holidaysList', 'holiday');
         document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
         document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
 
-        // النماذج
         document.getElementById('settingsForm').onsubmit = (e) => this.handleSettingsSubmit(e);
         document.getElementById('eventForm').onsubmit = (e) => this.handleEventSubmit(e);
 
-        // التصدير والاستيراد
         document.getElementById('exportFull').onclick = () => Utils.downloadJSON(this.data, 'التقويم_الجامعي_الكامل.json');
         document.getElementById('exportCourse').onclick = () => this.handleCourseExport();
         document.getElementById('importFullBtn').onclick = () => this.triggerImport('full');
@@ -186,5 +186,4 @@ const App = {
     }
 };
 
-// تشغيل التطبيق
 App.init();
