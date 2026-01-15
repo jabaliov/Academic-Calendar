@@ -1,21 +1,22 @@
 const App = {
-    data: Storage.load(),
+    data: null, // سنقوم بتحميل البيانات لاحقاً
 
-    init() {
+    async init() {
+        // تحميل البيانات بشكل غير متزامن
+        this.data = await Storage.load();
         this.bindEvents();
         this.renderAll();
     },
 
     renderAll() {
+        if (!this.data) return; // صمام أمان
+        
         if (this.data.config.startDate) {
             document.getElementById('startDate').value = this.data.config.startDate;
             document.getElementById('endDate').value = this.data.config.endDate;
             
-            // إصلاح: تحديث واجهة الفلاتر أولاً لكي يتمكن محرك التقويم من قراءتها
             this.updateFiltersUI(); 
             UIManager.updateCourseSelects(this.data.courses);
-            
-            // ثم البدء في رسم التقويم
             CalendarEngine.render(this.data);
         } else {
             CalendarEngine.hideLoading();
