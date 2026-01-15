@@ -189,3 +189,88 @@ window.onload = () => {
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
 }
+
+// --- وظيفة تقييد تاريخ النهاية ---
+function setupDateConstraint(startInput, endInput) {
+    startInput.addEventListener('change', () => {
+        endInput.min = startInput.value;
+        if (endInput.value && endInput.value < startInput.value) {
+            endInput.value = startInput.value;
+        }
+    });
+}
+
+// تطبيق القيود على تاريخ الفصل الدراسي الرئيسي
+setupDateConstraint(document.getElementById('startDate'), document.getElementById('endDate'));
+
+// --- تعديل وظيفة إنشاء الصفوف لإضافة القيود ---
+function createRow(containerId, type, data = {}) {
+    const container = document.getElementById(containerId);
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mb-2';
+    
+    if (type === 'course') {
+        div.innerHTML = `
+            <input type="text" placeholder="اسم المقرر" value="${data.name || ''}" class="course-name flex-[2] p-2 border rounded" required>
+            <input type="text" placeholder="الرمز" value="${data.code || ''}" class="course-code flex-1 p-2 border rounded" required>
+            <input type="color" value="${data.color || '#3b82f6'}" class="course-color w-10 h-10 p-1 rounded cursor-pointer">
+            <button type="button" class="text-red-500 remove-row p-1 hover:bg-red-50 rounded"><i data-lucide="trash-2"></i></button>
+        `;
+    } else {
+        div.innerHTML = `
+            <input type="text" placeholder="الاسم" value="${data.name || ''}" class="item-name flex-[2] p-2 border rounded" required>
+            <div class="flex flex-col flex-1">
+                <span class="text-[10px] text-gray-400">من</span>
+                <input type="date" value="${data.start || ''}" class="item-start p-1 border rounded text-xs" required>
+            </div>
+            <div class="flex flex-col flex-1">
+                <span class="text-[10px] text-gray-400">إلى</span>
+                <input type="date" value="${data.end || ''}" class="item-end p-1 border rounded text-xs" required>
+            </div>
+            <button type="button" class="text-red-500 remove-row p-1 hover:bg-red-50 rounded"><i data-lucide="trash-2"></i></button>
+        `;
+        // تفعيل قيد التاريخ للصفوف الجديدة
+        const start = div.querySelector('.item-start');
+        const end = div.querySelector('.item-end');
+        setupDateConstraint(start, end);
+    }
+
+    container.appendChild(div);
+    lucide.createIcons();
+    div.querySelector('.remove-row').onclick = () => div.remove();
+}
+
+// --- ميزة تصدير البيانات ---
+document.getElementById('exportData').onclick = () => {
+    const dataStr = JSON.stringify(universityData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `academic_planner_backup_${new Date().toLocaleDateString()}.json`;
+    link.click();
+};
+
+// --- ميزة استيراد البيانات ---
+const importFile = document.getElementById('importFile');
+document.getElementById('importDataBtn').onclick = () => importFile.click();
+
+importFile.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const importedData = JSON.parse(event.target.result);
+            if (confirm('هل أنت متأكد؟ سيؤدي ذلك لاستبدال جميع البيانات الحالية بالبيانات المستوردة.')) {
+                universityData = importedData;
+                saveData();
+                location.reload(); // تحديث الصفحة لتطبيق البيانات الجديدة
+            }
+        } catch (err) {
+            alert('خطأ في قراءة ملف البيانات!');
+        }
+    };
+    reader.readAsText(file);
+};
