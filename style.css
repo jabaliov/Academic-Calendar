@@ -254,3 +254,22 @@ textarea {
     resize: vertical;
     min-height: 100px;
 }
+
+/* --- تنسيقات التنبيهات (Toasts) --- */
+.toast-in {
+    animation: toastIn 0.3s ease-out forwards;
+}
+
+.toast-out {
+    animation: toastOut 0.3s ease-in forwards;
+}
+
+@keyframes toastIn {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toastOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0; }
+}
