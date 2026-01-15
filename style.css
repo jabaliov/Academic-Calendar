@@ -199,3 +199,13 @@ body {
     overflow-y: auto;
     padding-right: 4px;
 }
+
+#loadingOverlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* تحسين أداء الرندرة */
+#calendarGrid {
+    contain: content; /* يساعد المتصفح على تسريع رسم العناصر */
+}
