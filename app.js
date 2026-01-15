@@ -2,7 +2,7 @@ const App = {
     data: null,
 
     async init() {
-        // تحميل البيانات بشكل غير متزامن عند تشغيل التطبيق
+        // تحميل البيانات من IndexedDB عند تشغيل التطبيق
         this.data = await Storage.load();
         this.bindEvents();
         this.renderAll();
@@ -42,7 +42,6 @@ const App = {
         document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
         document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
 
-        // الدوال التي تتعامل مع الحفظ يجب أن تكون async
         document.getElementById('settingsForm').onsubmit = async (e) => await this.handleSettingsSubmit(e);
         document.getElementById('eventForm').onsubmit = async (e) => await this.handleEventSubmit(e);
 
@@ -87,7 +86,7 @@ const App = {
         });
 
         await Storage.save(this.data);
-        UIManager.showToast('تم حفظ الإعدادات بنجاح'، 'success');
+        UIManager.showToast('تم حفظ الإعدادات بنجاح', 'success'); // تم تصحيح الفاصلة هنا
         this.renderAll();
         UIManager.toggleModal('settingsModal', false);
     },
@@ -108,7 +107,7 @@ const App = {
             notes: ''
         });
         await Storage.save(this.data);
-        UIManager.showToast('تمت إضافة الموعد للجدول'، 'success');
+        UIManager.showToast('تمت إضافة الموعد للجدول', 'success'); // تم تصحيح الفاصلة هنا
         this.renderAll();
         UIManager.toggleModal('eventModal', false);
         e.target.reset();
@@ -127,19 +126,19 @@ const App = {
 
         UIManager.toggleModal('detailModal', true);
 
-        // تصحيح: إضافة async هنا للتعامل مع الـ await بالداخل
         document.getElementById('deleteEvent').onclick = async () => {
             this.data.events = this.data.events.filter(e => e.id !== id);
             await Storage.save(this.data);
+            UIManager.showToast('تم حذف الموعد', 'info');
             this.renderAll();
             UIManager.toggleModal('detailModal', false);
         };
 
-        // تصحيح: إضافة async هنا للتعامل مع الـ await بالداخل
         document.getElementById('saveEditEvent').onclick = async () => {
             ev.title = document.getElementById('editTitle').value;
             ev.notes = document.getElementById('editNotes').value;
             await Storage.save(this.data);
+            UIManager.showToast('تم تحديث البيانات', 'success');
             this.renderAll();
             UIManager.toggleModal('detailModal', false);
         };
@@ -156,7 +155,7 @@ const App = {
             <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="general" class="w-4 h-4"><span>عام</span></label>
         `;
         this.data.courses.forEach(c => {
-            html += `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="${c.id}" class="w-4 h-4" style="accent-color:${c.color}"><span>${c.name}</span></label>`;
+            html += `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="${c.id}" class="w-4 h-4" style="accent-color:${c.color}"><span>${Utils.escapeHTML(c.name)}</span></label>`;
         });
         container.innerHTML = html;
         container.querySelectorAll('input').forEach(i => i.onchange = () => CalendarEngine.render(this.data));
@@ -174,22 +173,26 @@ const App = {
         const reader = new FileReader();
         const mode = e.target.dataset.mode;
         
-        // تصحيح: إضافة async هنا لأننا نستخدم await بالداخل
         reader.onload = async (event) => {
             try {
                 const imported = JSON.parse(event.target.result);
                 if (mode === 'full') {
                     this.data = { ...DEFAULT_DATA, ...imported };
                 } else {
-                    if (imported.type !== 'course_package') return UIManager.showToast('عذراً، هذا الملف غير صالح لمقرر'، 'error');
+                    if (imported.type !== 'course_package') {
+                        return UIManager.showToast('ملف غير صالح لمقرر', 'error');
+                    }
                     if (!this.data.courses.find(c => c.id == imported.course.id)) this.data.courses.push(imported.course);
                     imported.events.forEach(ev => {
                         if (!this.data.events.find(old => old.date === ev.date && old.title === ev.title)) this.data.events.push(ev);
                     });
                 }
                 await Storage.save(this.data);
-                location.reload();
-            } catch (err) { UIManager.showToast('حدث خطأ أثناء قراءة الملف'، 'error'); }
+                UIManager.showToast('تم استيراد البيانات بنجاح', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } catch (err) { 
+                UIManager.showToast('خطأ في قراءة الملف', 'error');
+            }
         };
         reader.readAsText(e.target.files[0]);
     },
@@ -197,16 +200,14 @@ const App = {
     handleCourseExport() {
         const cid = document.getElementById('exportCourseId').value;
         const course = this.data.courses.find(c => c.id == cid);
-        if (!course) return alert('الرجاء اختيار مقرر');
+        if (!course) return UIManager.showToast('الرجاء اختيار مقرر أولاً', 'info');
         const events = this.data.events.filter(ev => ev.courseId == cid);
         Utils.downloadJSON({ type: 'course_package', course, events }, `مقرر_${course.name}.json`);
     }
 };
 
-// تشغيل التطبيق
 App.init();
 
-// إعداد Service Worker
 if ('serviceWorker' in navigator) {
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
