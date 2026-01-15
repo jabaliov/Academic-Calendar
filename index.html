@@ -63,6 +63,17 @@
                 <button class="close-modal text-gray-400 hover:text-gray-600">
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
+                 <div class="flex gap-4 pt-4 border-t mb-4">
+    <button type="button" id="exportData" class="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-lg border border-green-200 transition">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        <span>تصدير البيانات</span>
+    </button>
+    <button type="button" id="importDataBtn" class="flex-1 flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 py-2 rounded-lg border border-amber-200 transition">
+        <i data-lucide="upload" class="w-4 h-4"></i>
+        <span>استيراد البيانات</span>
+    </button>
+    <input type="file" id="importFile" class="hidden" accept=".json">
+</div>
             </div>
             
             <form id="settingsForm" class="space-y-6">
@@ -105,18 +116,9 @@
                     </button>
                 </div>
             </form>
+            
         </div>
-        <div class="flex gap-4 pt-4 border-t mb-4">
-    <button type="button" id="exportData" class="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-lg border border-green-200 transition">
-        <i data-lucide="download" class="w-4 h-4"></i>
-        <span>تصدير البيانات</span>
-    </button>
-    <button type="button" id="importDataBtn" class="flex-1 flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 py-2 rounded-lg border border-amber-200 transition">
-        <i data-lucide="upload" class="w-4 h-4"></i>
-        <span>استيراد البيانات</span>
-    </button>
-    <input type="file" id="importFile" class="hidden" accept=".json">
-</div>
+       
     </div>
 
     <div id="eventModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
