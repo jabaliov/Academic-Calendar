@@ -66,6 +66,10 @@ const App = {
         document.getElementById('importFullBtn').onclick = () => this.triggerImport('full');
         document.getElementById('universalFilePicker').onchange = (e) => this.handleFileImport(e);
         document.getElementById('resetAllData').onclick = async () => await Storage.clear();
+
+        // تصدير واستيراد مقرر معين
+        document.getElementById('exportCourse').onclick = () => this.handleCourseExport();
+        document.getElementById('importCourseBtn').onclick = () => this.triggerImport('merge');
     },
 
     /**
