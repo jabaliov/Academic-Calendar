@@ -10,6 +10,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-50 text-gray-800 font-['Tajawal'] min-h-screen">
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-500">
+    <div class="relative w-24 h-24 mb-4">
+        <div class="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+        <div class="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+    </div>
+    <h2 class="text-xl font-bold text-gray-700 mb-2">جاري تجهيز تقويمك...</h2>
+    <div class="w-64 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div id="loadingBar" class="h-full bg-blue-600 transition-all duration-300" style="width: 0%"></div>
+    </div>
+    <p id="loadingText" class="text-sm text-gray-400 mt-2 font-medium">0%</p>
+</div>
 
     <header class="bg-white shadow-sm sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
