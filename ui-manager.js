@@ -45,5 +45,37 @@ const UIManager = {
         const options = `<option value="general">موعد عام (غير مرتبط بمقرر)</option>` + 
                         courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         selects.forEach(s => { if(s) s.innerHTML = options; });
+    },
+
+    showToast: (message, type = 'success') => {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const bgColors = {
+            success: 'bg-emerald-600',
+            error: 'bg-red-600',
+            info: 'bg-blue-600'
+        };
+        const icons = {
+            success: 'check-circle',
+            error: 'alert-triangle',
+            info: 'info'
+        };
+
+        toast.className = `${bgColors[type]} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] toast-in`;
+        toast.innerHTML = `
+            <i data-lucide="${icons[type]}" class="w-5 h-5"></i>
+            <span class="font-bold text-sm">${message}</span>
+        `;
+        
+        container.appendChild(toast);
+        lucide.createIcons({ target: toast });
+
+        // إخفاء التنبيه تلقائياً بعد 4 ثوانٍ
+        setTimeout(() => {
+            toast.classList.replace('toast-in', 'toast-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
     }
 };
