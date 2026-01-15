@@ -1,6 +1,4 @@
-const CACHE_NAME = 'uni-planner-v2';
-
-// تحديث القائمة لتشمل الملفات الجديدة المقسمة
+const CACHE_NAME = 'uni-planner-v3'; // تغيير الرقم هنا إلزامي لإجبار iOS على التحديث
 const assets = [
     './',
     './index.html',
@@ -15,7 +13,19 @@ const assets = [
 ];
 
 self.addEventListener('install', e => {
+    // فرض التحديث الفوري دون انتظار إغلاق التبويبات
+    self.skipWaiting(); 
     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(assets)));
+});
+
+self.addEventListener('activate', e => {
+    // حذف أي Cache قديم تماماً
+    e.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.map(key => { if (key !== CACHE_NAME) return caches.delete(key); })
+        ))
+    );
+    return self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
