@@ -209,3 +209,56 @@ body {
 #calendarGrid {
     contain: content; /* يساعد المتصفح على تسريع رسم العناصر */
 }
+
+/* تحسين شكل السكرول بار داخل المودال */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* تنسيق صفوف الإدخال الديناميكية */
+#coursesList > div, #holidaysList > div, #periodsList > div {
+    display: flex;
+    flex-wrap: wrap; /* يمنع التداخل في الشاشات الصغيرة */
+    gap: 10px;
+    align-items: center;
+    background: white;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.2s;
+}
+
+#coursesList > div:hover {
+    border-color: #3b82f6;
+    background: #f0f7ff;
+}
+
+/* ضبط مرونة الحقول */
+.field-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 100px;
+}
+
+.field-group label {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+
+input[type="text"], input[type="date"] {
+    font-size: 13px;
+    padding: 6px 10px;
+}
+
+/* استايل زر الحذف */
+.remove-row {
+    margin-top: auto;
+    margin-bottom: 5px;
+}
