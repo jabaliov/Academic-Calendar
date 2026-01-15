@@ -14,7 +14,11 @@ const CalendarEngine = {
         let processedDays = 0;
 
         while (current.getDay() !== 0) current.setDate(current.getDate() - 1);
-        const activeFilters = Array.from(document.getElementById('filterContainer').querySelectorAll('input:checked')).map(i => i.value);
+        
+        // تحسين: التأكد من جلب الفلاتر بشكل صحيح
+        const filterContainer = document.getElementById('filterContainer');
+        const activeFilters = Array.from(filterContainer.querySelectorAll('input:checked')).map(i => i.value);
+        
         let weekNumber = 1;
 
         while (current <= last) {
@@ -46,7 +50,7 @@ const CalendarEngine = {
         this.hideLoading();
         lucide.createIcons();
     },
-
+    // ... (بقية الدالات كما هي) ...
     createDayCell(current, dateStr, data, filters) {
         const cell = document.createElement('div');
         const isHoliday = filters.includes('holidays') && data.holidays.some(h => dateStr >= h.start && dateStr <= h.end);
@@ -54,14 +58,13 @@ const CalendarEngine = {
         
         cell.className = `day-cell ${isHoliday ? 'is-holiday' : ''} ${isProcedure ? 'is-procedure' : ''}`;
         
-        // جلب التاريخ الهجري
         const hijri = Utils.getHijriDate(current);
-        const dayName = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][current.getDay()];
+        const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
         let html = `
             <div class="day-header">
                 <div class="flex flex-col">
-                    <span class="day-name">${dayName}</span>
+                    <span class="day-name">${dayNames[current.getDay()]}</span>
                     <span class="hijri-date">${hijri}</span>
                 </div>
                 <span class="day-number">${current.getDate()}</span>
