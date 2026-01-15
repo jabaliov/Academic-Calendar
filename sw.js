@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uni-planner-v3'; // تغيير الرقم هنا إلزامي لإجبار iOS على التحديث
+const CACHE_NAME = 'uni-planner-v4'; // تحديث الإصدار لإجبار المتصفح على تحميل التغييرات الجديدة
 const assets = [
     './',
     './index.html',
@@ -9,7 +9,10 @@ const assets = [
     './ui-manager.js',
     './calendar-engine.js',
     './app.js',
-    './manifest.json'
+    './manifest.json',
+    './tailwind.js', // المكتبات المحلية الجديدة
+    './lucide.js',
+    './dexie.js'
 ];
 
 self.addEventListener('install', e => {
