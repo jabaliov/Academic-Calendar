@@ -1,23 +1,190 @@
-let universityData = Storage.load();
+const App = {
+    data: Storage.load(),
 
-window.onload = () => {
-    // تعبئة البيانات في الإعدادات
-    if (universityData.config.startDate) {
-        document.getElementById('startDate').value = universityData.config.startDate;
-        document.getElementById('endDate').value = universityData.config.endDate;
-        // توليد الصفوف...
-        CalendarEngine.render(universityData);
-    } else {
-        CalendarEngine.hideLoading();
+    init() {
+        this.bindEvents();
+        this.renderAll();
+    },
+
+    renderAll() {
+        if (this.data.config.startDate) {
+            document.getElementById('startDate').value = this.data.config.startDate;
+            document.getElementById('endDate').value = this.data.config.endDate;
+            CalendarEngine.render(this.data);
+            this.updateFiltersUI();
+            UIManager.updateCourseSelects(this.data.courses);
+        } else {
+            CalendarEngine.hideLoading();
+        }
+    },
+
+    bindEvents() {
+        // أزرار النوافذ
+        document.getElementById('openSettings').onclick = () => {
+            this.prepareSettingsForm();
+            UIManager.toggleModal('settingsModal', true);
+        };
+        document.getElementById('addEventBtn').onclick = () => this.openAddEvent(Utils.formatDate(new Date()));
+        document.querySelectorAll('.close-modal').forEach(b => b.onclick = () => {
+            UIManager.toggleModal('settingsModal', false);
+            UIManager.toggleModal('eventModal', false);
+        });
+        document.querySelector('.close-detail').onclick = () => UIManager.toggleModal('detailModal', false);
+
+        // إضافة الصفوف
+        document.getElementById('addCourseRow').onclick = () => UIManager.createRow('coursesList', 'course');
+        document.getElementById('addHolidayRow').onclick = () => UIManager.createRow('holidaysList', 'holiday');
+        document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
+        document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
+
+        // النماذج
+        document.getElementById('settingsForm').onsubmit = (e) => this.handleSettingsSubmit(e);
+        document.getElementById('eventForm').onsubmit = (e) => this.handleEventSubmit(e);
+
+        // التصدير والاستيراد
+        document.getElementById('exportFull').onclick = () => Utils.downloadJSON(this.data, 'التقويم_الجامعي_الكامل.json');
+        document.getElementById('exportCourse').onclick = () => this.handleCourseExport();
+        document.getElementById('importFullBtn').onclick = () => this.triggerImport('full');
+        document.getElementById('importCourseBtn').onclick = () => this.triggerImport('merge');
+        document.getElementById('universalFilePicker').onchange = (e) => this.handleFileImport(e);
+        
+        document.getElementById('resetAllData').onclick = () => Storage.clear();
+    },
+
+    prepareSettingsForm() {
+        ['coursesList', 'holidaysList', 'periodsList', 'proceduresList'].forEach(id => document.getElementById(id).innerHTML = '');
+        this.data.courses.forEach(c => UIManager.createRow('coursesList', 'course', c));
+        this.data.holidays.forEach(h => UIManager.createRow('holidaysList', 'holiday', h));
+        this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p));
+        this.data.procedures.forEach(pr => UIManager.createRow('proceduresList', 'procedure', pr));
+    },
+
+    handleSettingsSubmit(e) {
+        e.preventDefault();
+        this.data.config.startDate = document.getElementById('startDate').value;
+        this.data.config.endDate = document.getElementById('endDate').value;
+        
+        this.data.courses = Array.from(document.querySelectorAll('#coursesList > .dynamic-row')).map(row => ({
+            id: row.dataset.id || Utils.generateId('c'),
+            name: row.querySelector('.course-name').value,
+            code: row.querySelector('.course-code').value,
+            color: row.querySelector('.course-color').value
+        }));
+
+        ['holidays', 'periods', 'procedures'].forEach(type => {
+            this.data[type] = Array.from(document.querySelectorAll(`#${type}List > .dynamic-row`)).map(row => ({
+                name: row.querySelector('.item-name').value,
+                start: row.querySelector('.item-start').value,
+                end: row.querySelector('.item-end').value
+            }));
+        });
+
+        Storage.save(this.data);
+        this.renderAll();
+        UIManager.toggleModal('settingsModal', false);
+    },
+
+    openAddEvent(date) {
+        UIManager.updateCourseSelects(this.data.courses);
+        document.getElementById('eventDate').value = date;
+        UIManager.toggleModal('eventModal', true);
+    },
+
+    handleEventSubmit(e) {
+        e.preventDefault();
+        this.data.events.push({
+            id: Utils.generateId('ev'),
+            courseId: document.getElementById('eventCourse').value,
+            title: document.getElementById('eventTitle').value,
+            date: document.getElementById('eventDate').value,
+            notes: ''
+        });
+        Storage.save(this.data);
+        this.renderAll();
+        UIManager.toggleModal('eventModal', false);
+        e.target.reset();
+    },
+
+    showEventDetail(id) {
+        const ev = this.data.events.find(e => e.id === id);
+        if (!ev) return;
+        const course = this.data.courses.find(c => c.id == ev.courseId);
+        
+        document.getElementById('detailHeader').style.backgroundColor = course ? course.color : '#64748b';
+        document.getElementById('detailCourseName').innerText = ev.title;
+        document.getElementById('editTitle').value = ev.title;
+        document.getElementById('editNotes').value = ev.notes || '';
+        document.getElementById('detailDateText').innerText = ev.date;
+
+        UIManager.toggleModal('detailModal', true);
+
+        document.getElementById('deleteEvent').onclick = () => {
+            this.data.events = this.data.events.filter(e => e.id !== id);
+            Storage.save(this.data);
+            this.renderAll();
+            UIManager.toggleModal('detailModal', false);
+        };
+
+        document.getElementById('saveEditEvent').onclick = () => {
+            ev.title = document.getElementById('editTitle').value;
+            ev.notes = document.getElementById('editNotes').value;
+            Storage.save(this.data);
+            this.renderAll();
+            UIManager.toggleModal('detailModal', false);
+        };
+    },
+
+    updateFiltersUI() {
+        const container = document.getElementById('filterContainer');
+        let html = `
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="holidays" class="w-4 h-4"><span>الإجازات</span></label>
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="periods" class="w-4 h-4"><span>الفترات</span></label>
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="procedures" class="w-4 h-4"><span>الإجراءات</span></label>
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="general" class="w-4 h-4"><span>عام</span></label>
+        `;
+        this.data.courses.forEach(c => {
+            html += `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked value="${c.id}" class="w-4 h-4" style="accent-color:${c.color}"><span>${c.name}</span></label>`;
+        });
+        container.innerHTML = html;
+        container.querySelectorAll('input').forEach(i => i.onchange = () => CalendarEngine.render(this.data));
+    },
+
+    triggerImport(mode) {
+        const picker = document.getElementById('universalFilePicker');
+        picker.dataset.mode = mode;
+        picker.click();
+    },
+
+    handleFileImport(e) {
+        const reader = new FileReader();
+        const mode = e.target.dataset.mode;
+        reader.onload = (event) => {
+            try {
+                const imported = JSON.parse(event.target.result);
+                if (mode === 'full') {
+                    this.data = { ...DEFAULT_DATA, ...imported };
+                } else {
+                    if (imported.type !== 'course_package') return alert('ملف غير صالح لمقرر');
+                    if (!this.data.courses.find(c => c.id == imported.course.id)) this.data.courses.push(imported.course);
+                    imported.events.forEach(ev => {
+                        if (!this.data.events.find(old => old.date === ev.date && old.title === ev.title)) this.data.events.push(ev);
+                    });
+                }
+                Storage.save(this.data);
+                location.reload();
+            } catch (err) { alert('خطأ في قراءة الملف'); }
+        };
+        reader.readAsText(e.target.files[0]);
+    },
+
+    handleCourseExport() {
+        const cid = document.getElementById('exportCourseId').value;
+        const course = this.data.courses.find(c => c.id == cid);
+        if (!course) return alert('الرجاء اختيار مقرر');
+        const events = this.data.events.filter(ev => ev.courseId == cid);
+        Utils.downloadJSON({ type: 'course_package', course, events }, `مقرر_${course.name}.json`);
     }
 };
 
-// الأحداث (Event Listeners)
-document.getElementById('settingsForm').onsubmit = (e) => {
-    e.preventDefault();
-    // تجميع البيانات من الواجهة وحفظها...
-    universityData.config.startDate = document.getElementById('startDate').value;
-    // ... إلخ
-    Storage.save(universityData);
-    CalendarEngine.render(universityData);
-};
+// تشغيل التطبيق
+App.init();
