@@ -1,5 +1,12 @@
 const Utils = {
-    // إصلاح: استخدام التاريخ المحلي بدلاً من ISO لتجنب مشاكل المناطق الزمنية
+    // دالة حماية من الـ XSS (تأمين النصوص)
+    escapeHTML: (str) => {
+        if (!str) return "";
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    },
+
     formatDate: (date) => {
         const d = new Date(date);
         const year = d.getFullYear();
@@ -10,7 +17,6 @@ const Utils = {
 
     getHijriDate: (date) => {
         try {
-            // إصلاح: استخدام المسمى المعياري الصحيح (umalqura) لضمان الظهور
             return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {
                 day: 'numeric',
                 month: 'long'
