@@ -1,4 +1,5 @@
 const CACHE_NAME = 'uni-planner-v2';
+
 // تحديث القائمة لتشمل الملفات الجديدة المقسمة
 const assets = [
     './',
