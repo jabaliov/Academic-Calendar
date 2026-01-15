@@ -13,7 +13,7 @@ const CalendarEngine = {
         const totalDays = Math.ceil((last - current) / (1000 * 60 * 60 * 24)) || 1;
         let processedDays = 0;
 
-        // العودة إلى أول يوم أحد في الأسبوع للبدء منه
+        // ضبط البداية لتكون من أول يوم أحد في الأسبوع
         while (current.getDay() !== 0) current.setDate(current.getDate() - 1);
         
         const filterContainer = document.getElementById('filterContainer');
@@ -25,7 +25,7 @@ const CalendarEngine = {
             processedDays += 7;
             this.updateProgressBar(processedDays, totalDays);
 
-            // منطق التحقق مما إذا كان الأسبوع بالكامل إجازة لتخطي عدّه
+            // ميزة: التحقق من أسابيع الإجازات الكاملة
             let isFullHolidayWeek = true;
             let tempDate = new Date(current);
             for (let i = 0; i < 7; i++) {
@@ -44,16 +44,16 @@ const CalendarEngine = {
             weekLabel.className = 'week-label';
             
             if (isFullHolidayWeek) {
-                weekLabel.innerHTML = `<span class="text-[10px] text-orange-500 font-bold uppercase">إجازة</span>`;
+                weekLabel.innerHTML = `<span class="text-[9px] text-orange-500 font-black uppercase tracking-tighter rotate-180 [writing-mode:vertical-lr]">إجازة رسمية</span>`;
             } else {
-                weekLabel.innerHTML = `<span>أسبوع</span><span class="text-xl">${academicWeek}</span>`;
+                weekLabel.innerHTML = `<span>أسبوع</span><span class="text-xl font-black">${academicWeek}</span>`;
                 academicWeek++;
             }
             weekRow.appendChild(weekLabel);
 
             for (let i = 0; i < 7; i++) {
                 const dateStr = Utils.formatDate(current);
-                if (current.getDay() < 5) { // عرض أيام العمل فقط (الأحد - الخميس)
+                if (current.getDay() < 5) { // الأحد - الخميس
                     const cell = this.createDayCell(current, dateStr, data, activeFilters);
                     weekRow.appendChild(cell);
                 }
@@ -74,48 +74,52 @@ const CalendarEngine = {
         const isHoliday = filters.includes('holidays') && data.holidays.some(h => dateStr >= h.start && dateStr <= h.end);
         const isProcedure = filters.includes('procedures') && data.procedures.some(p => dateStr >= p.start && dateStr <= p.end);
         
-        cell.className = `day-cell ${isHoliday ? 'is-holiday' : ''} ${isProcedure ? 'is-procedure' : ''}`;
+        cell.className = `day-cell group ${isHoliday ? 'is-holiday' : ''} ${isProcedure ? 'is-procedure' : ''}`;
         
-        const hijri = Utils.getHijriDate(current);
-        // استخدام تقويم gregory صراحة لضمان ظهور الشهر بالميلادي دائماً
+        const hijri = Utils.getHijriDate(current); //
         const monthName = current.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'long' });
         const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
-        // تنسيق الترويسة: توزيع رقم اليوم والشهر على اليسار، واسم اليوم والهجري على اليمين
+        // التصميم الجديد والمطور للترويسة (Professional Design)
         let html = `
-            <div class="day-header flex flex-col gap-1 mb-2">
-                <div class="flex justify-between items-start">
-                    <span class="day-name text-[10px] text-gray-400 font-medium">${dayNames[current.getDay()]}</span>
-                    <span class="day-number text-lg font-bold leading-none">${current.getDate()}</span>
+            <div class="day-header flex flex-col mb-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex flex-col">
+                        <span class="day-number text-3xl font-black text-slate-900 leading-none tracking-tighter group-hover:text-blue-600 transition-colors">${current.getDate()}</span>
+                        <span class="month-name text-[10px] font-black text-blue-600 uppercase tracking-tight mt-1">${monthName}</span>
+                    </div>
+                    <span class="day-name text-[10px] font-bold text-slate-400 border-r-2 border-slate-200 pr-2 h-fit mt-1 uppercase tracking-widest">${dayNames[current.getDay()]}</span>
                 </div>
-                <div class="flex justify-between items-center border-t border-gray-100 pt-1">
-                    <span class="hijri-date text-[9px] text-gray-500 font-medium">${hijri}</span>
-                    <span class="month-name text-[9px] font-bold text-blue-600">${monthName}</span>
+                <div class="flex items-center gap-2 bg-slate-50/80 p-1.5 rounded-xl border border-slate-100/50 group-hover:bg-white transition-colors">
+                    <span class="w-1.5 h-1.5 bg-blue-500 rounded-full opacity-40 group-hover:opacity-100"></span>
+                    <span class="hijri-date text-[10px] text-slate-500 font-bold tracking-tight">${hijri}</span>
                 </div>
             </div>`;
         
-        // عرض الإجازات، الفترات، والإجراءات
+        // عرض التصنيفات (إجازات، فترات، إجراءات) بتصميم مبسط
         ['holidays', 'periods', 'procedures'].forEach(type => {
             if (filters.includes(type)) {
                 const items = data[type].filter(i => dateStr >= i.start && dateStr <= i.end);
                 items.forEach(item => {
-                    const safeName = Utils.escapeHTML(item.name);
-                    html += `<span class="text-[10px] font-bold ${STATUS_COLORS[type]} block mt-1">${safeName}</span>`;
+                    html += `
+                        <div class="flex items-center gap-1.5 mt-1 animate-in fade-in slide-in-from-right-1 duration-300">
+                            <span class="w-1 h-3 rounded-full ${this.getIndicatorColor(type)}"></span>
+                            <span class="text-[10px] font-black ${STATUS_COLORS[type]} truncate">${Utils.escapeHTML(item.name)}</span>
+                        </div>`;
                 });
             }
         });
 
-        // عرض المواعيد الدراسية
+        // عرض المواعيد الدراسية (Events)
         data.events.filter(ev => ev.date === dateStr && filters.includes(ev.courseId)).forEach(ev => {
             const course = data.courses.find(c => c.id == ev.courseId);
             const color = course ? course.color : '#64748b';
-            const safeCourseName = Utils.escapeHTML(course ? course.name : 'عام');
-            const safeEventTitle = Utils.escapeHTML(ev.title);
-            
             html += `
-                <div class="event-item" style="border-right-color: ${color}; background: ${color}15" onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')">
-                    <span class="text-[9px] opacity-60 block">${safeCourseName}</span>
-                    <span class="truncate block">${safeEventTitle}</span>
+                <div class="event-item group/ev" style="border-right-color: ${color}; background: ${color}10" onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')">
+                    <div class="flex flex-col overflow-hidden">
+                        <span class="text-[8px] font-bold opacity-50 uppercase tracking-tighter">${Utils.escapeHTML(course ? course.name : 'عام')}</span>
+                        <span class="text-[10px] font-bold text-slate-700 truncate">${Utils.escapeHTML(ev.title)}</span>
+                    </div>
                 </div>`;
         });
 
@@ -124,11 +128,16 @@ const CalendarEngine = {
         return cell;
     },
 
-    showLoading() { document.getElementById('loadingOverlay').classList.remove('fade-out'); },
+    // دالة مساعدة للألوان الجانبية
+    getIndicatorColor(type) {
+        const colors = { holidays: 'bg-orange-500', periods: 'bg-purple-500', procedures: 'bg-emerald-500' };
+        return colors[type] || 'bg-slate-300';
+    },
+
+    showLoading() { document.getElementById('loadingOverlay')?.classList.remove('fade-out'); },
     hideLoading() { 
         setTimeout(() => {
-            const loader = document.getElementById('loadingOverlay');
-            if(loader) loader.classList.add('fade-out');
+            document.getElementById('loadingOverlay')?.classList.add('fade-out');
         }, 300); 
     },
     updateProgressBar(p, t) {
