@@ -67,71 +67,88 @@
         </div>
     </main>
 
-    <div id="settingsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
-            <div class="flex justify-between items-center mb-6 border-b pb-4">
-                <h3 class="text-xl font-bold">إعدادات الفصل الدراسي</h3>
-                <button class="close-modal text-gray-400 hover:text-gray-600">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-                 <div class="flex gap-4 pt-4 border-t mb-4">
-    <button type="button" id="exportData" class="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-lg border border-green-200 transition">
-        <i data-lucide="download" class="w-4 h-4"></i>
-        <span>تصدير البيانات</span>
-    </button>
-    <button type="button" id="importDataBtn" class="flex-1 flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 py-2 rounded-lg border border-amber-200 transition">
-        <i data-lucide="upload" class="w-4 h-4"></i>
-        <span>استيراد البيانات</span>
-    </button>
-    <input type="file" id="importFile" class="hidden" accept=".json">
-</div>
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[100] p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        
+        <div class="flex justify-between items-center p-6 border-b bg-gray-50">
+            <div class="flex items-center gap-2">
+                <i data-lucide="settings" class="text-blue-600"></i>
+                <h3 class="text-xl font-bold text-gray-800">إعدادات الفصل الدراسي</h3>
             </div>
+            <button class="close-modal p-2 hover:bg-gray-200 rounded-full transition">
+                <i data-lucide="x" class="w-6 h-6 text-gray-500"></i>
+            </button>
+        </div>
+
+        <form id="settingsForm" class="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
             
-            <form id="settingsForm" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">تاريخ بداية الفصل</label>
-                        <input type="date" id="startDate" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">تاريخ نهاية الفصل</label>
-                        <input type="date" id="endDate" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
-                </div>
-
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <div>
-                    <div class="flex justify-between items-center mb-2">
-                        <label class="block text-sm font-medium">المقررات الدراسية</label>
-                        <button type="button" id="addCourseRow" class="text-blue-600 text-sm font-bold">+ إضافة مقرر</button>
-                    </div>
-                    <div id="coursesList" class="space-y-2">
-                        </div>
+                    <label class="block text-sm font-bold text-blue-900 mb-2 text-right">بداية الفصل الدراسي</label>
+                    <input type="date" id="startDate" required class="w-full border-2 border-white rounded-lg p-2 focus:border-blue-500 outline-none shadow-sm">
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium mb-2 text-orange-600">الإجازات</label>
-                        <div id="holidaysList" class="space-y-2"></div>
-                        <button type="button" id="addHolidayRow" class="mt-2 text-sm text-orange-600">+ إضافة إجازة</button>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2 text-purple-600">فترات هامة (اختبارات...)</label>
-                        <div id="periodsList" class="space-y-2"></div>
-                        <button type="button" id="addPeriodRow" class="mt-2 text-sm text-purple-600">+ إضافة فترة</button>
-                    </div>
+                <div>
+                    <label class="block text-sm font-bold text-blue-900 mb-2 text-right">نهاية الفصل الدراسي</label>
+                    <input type="date" id="endDate" required class="w-full border-2 border-white rounded-lg p-2 focus:border-blue-500 outline-none shadow-sm">
                 </div>
+            </div>
 
-                <div class="pt-4 border-t">
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">
-                        حفظ جميع الإعدادات وتحديث التقويم
+            <div class="space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h4 class="font-bold text-gray-700 flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-4 h-4 text-blue-500"></i> المقررات الدراسية
+                    </h4>
+                    <button type="button" id="addCourseRow" class="text-blue-600 hover:text-blue-800 text-sm font-bold bg-blue-50 px-3 py-1 rounded-lg transition">
+                        + إضافة مقرر
                     </button>
                 </div>
-            </form>
-            
-        </div>
-       
-    </div>
+                <div id="coursesList" class="space-y-3">
+                    </div>
+            </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h4 class="font-bold text-orange-700 flex items-center gap-2">
+                            <i data-lucide="palmtree" class="w-4 h-4"></i> الإجازات
+                        </h4>
+                        <button type="button" id="addHolidayRow" class="text-orange-600 text-xs font-bold bg-orange-50 px-2 py-1 rounded-lg">+ إضافة</button>
+                    </div>
+                    <div id="holidaysList" class="space-y-3"></div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h4 class="font-bold text-purple-700 flex items-center gap-2">
+                            <i data-lucide="alert-circle" class="w-4 h-4"></i> فترات هامة
+                        </h4>
+                        <button type="button" id="addPeriodRow" class="text-purple-600 text-xs font-bold bg-purple-50 px-2 py-1 rounded-lg">+ إضافة</button>
+                    </div>
+                    <div id="periodsList" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-4 pt-6 border-t">
+                <button type="button" id="exportData" class="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 border border-green-200 py-2.5 rounded-xl hover:bg-green-100 transition">
+                    <i data-lucide="download" class="w-4 h-4"></i> <span class="text-sm font-bold">نسخة احتياطية</span>
+                </button>
+                <button type="button" id="importDataBtn" class="flex-1 flex items-center justify-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 py-2.5 rounded-xl hover:bg-amber-100 transition">
+                    <i data-lucide="upload" class="w-4 h-4"></i> <span class="text-sm font-bold">استعادة بيانات</span>
+                </button>
+                <input type="file" id="importFile" class="hidden" accept=".json">
+            </div>
+        </form>
+
+        <div class="p-6 bg-gray-50 border-t flex gap-3">
+            <button type="submit" form="settingsForm" class="flex-[2] bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition active:scale-95 text-center">
+                حفظ الإعدادات وتحديث التقويم
+            </button>
+            <button type="button" class="close-modal flex-1 bg-white text-gray-500 border border-gray-300 font-bold py-3 rounded-xl hover:bg-gray-100 transition text-center">
+                إلغاء
+            </button>
+        </div>
+    </div>
+</div>
     <div id="eventModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
         <div class="flex justify-between items-center mb-6 border-b pb-4">
