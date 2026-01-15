@@ -50,7 +50,7 @@ const CalendarEngine = {
         this.hideLoading();
         lucide.createIcons();
     },
-    // ... (بقية الدالات كما هي) ...
+
     createDayCell(current, dateStr, data, filters) {
         const cell = document.createElement('div');
         const isHoliday = filters.includes('holidays') && data.holidays.some(h => dateStr >= h.start && dateStr <= h.end);
@@ -61,6 +61,7 @@ const CalendarEngine = {
         const hijri = Utils.getHijriDate(current);
         const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
+        // ترويسة اليوم (نصوص ثابتة أو محسوبة لا تحتاج تنظيف، لكننا نحافظ على الهيكل)
         let html = `
             <div class="day-header">
                 <div class="flex flex-col">
@@ -70,17 +71,29 @@ const CalendarEngine = {
                 <span class="day-number">${current.getDate()}</span>
             </div>`;
         
+        // تنظيف أسماء الإجازات والفترات
         ['holidays', 'periods', 'procedures'].forEach(type => {
             if (filters.includes(type)) {
                 const item = data[type].find(i => dateStr >= i.start && dateStr <= i.end);
-                if (item) html += `<span class="text-[10px] font-bold ${STATUS_COLORS[type]} block mt-1">${item.name}</span>`;
+                if (item) {
+                    const safeName = Utils.escapeHTML(item.name); // تأمين الاسم هنا
+                    html += `<span class="text-[10px] font-bold ${STATUS_COLORS[type]} block mt-1">${safeName}</span>`;
+                }
             }
         });
 
+        // تنظيف أسماء المقررات وعناوين المواعيد
         data.events.filter(ev => ev.date === dateStr && filters.includes(ev.courseId)).forEach(ev => {
             const course = data.courses.find(c => c.id == ev.courseId);
             const color = course ? course.color : '#64748b';
-            html += `<div class="event-item" style="border-right-color: ${color}; background: ${color}15" onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')"><span class="text-[9px] opacity-60 block">${course ? course.name : 'عام'}</span>${ev.title}</div>`;
+            const safeCourseName = Utils.escapeHTML(course ? course.name : 'عام'); // تأمين اسم المقرر
+            const safeEventTitle = Utils.escapeHTML(ev.title); // تأمين عنوان الموعد
+            
+            html += `
+                <div class="event-item" style="border-right-color: ${color}; background: ${color}15" onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')">
+                    <span class="text-[9px] opacity-60 block">${safeCourseName}</span>
+                    ${safeEventTitle}
+                </div>`;
         });
 
         cell.innerHTML = html;
