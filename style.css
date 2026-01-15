@@ -1,18 +1,32 @@
-/* تنسيقات عامة وتجهيز الخط */
+/* --- المتغيرات الأساسية وإعدادات الخط --- */
 :root {
-    --primary-color: #2563eb;
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+    --bg-main: #f8fafc;
     --holiday-bg: #fff7ed;
-    --holiday-border: #fdba74;
+    --holiday-text: #c2410c;
     --period-bg: #f3e8ff;
-    --period-border: #d8b4fe;
-    --today-border: #2563eb;
+    --period-text: #7e22ce;
+    --procedure-bg: #ecfdf5;
+    --procedure-text: #059669;
+    --border-color: #e2e8f0;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
     -webkit-tap-highlight-color: transparent;
+    line-height: 1.6;
+    overflow-x: hidden;
 }
 
-/* تحسين شكل السكرول بار */
+/* --- تخصيص شريط التمرير (Scrollbar) --- */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -24,77 +38,94 @@ body {
     background: #cbd5e1;
     border-radius: 10px;
 }
-
-/* تنسيق حاوية الأسبوع */
-.week-row {
-    display: grid;
-    grid-template-columns: 80px repeat(5, 1fr); /* عمود لرقم الأسبوع و 5 أعمدة للأيام */
-    gap: 1px;
-    background-color: #e2e8f0; /* لون الحدود بين الخلايا */
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
 }
 
-/* خلية عنوان الأسبوع (الأسبوع 1، 2...) */
+/* --- شاشة الانتظار (Loading Overlay) --- */
+#loadingOverlay {
+    transition: opacity 0.5s ease, visibility 0.5s;
+}
+#loadingOverlay.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* --- تصميم شبكة التقويم (Calendar Grid) --- */
+.week-row {
+    display: grid;
+    grid-template-columns: 80px repeat(5, 1fr); /* عمود للأسبوع + 5 أيام */
+    gap: 1px;
+    background-color: var(--border-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
 .week-label {
-    background-color: #f8fafc;
+    background-color: #f1f5f9;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    color: #64748b;
-    border-left: 1px solid #e2e8f0;
-    padding: 10px;
-    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    border-left: 1px solid var(--border-color);
+    text-align: center;
 }
 
-/* خلية اليوم */
 .day-cell {
     background-color: white;
-    min-height: 120px;
-    padding: 8px;
-    transition: background-color 0.2s;
+    min-height: 140px;
+    padding: 10px;
+    transition: all 0.2s ease;
     position: relative;
+    cursor: pointer;
 }
 
 .day-cell:hover {
-    background-color: #f1f5f9;
+    background-color: #f8fafc;
 }
 
-/* ترويسة اليوم (الاسم والرقم) */
+/* ترويسة اليوم */
 .day-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
     border-bottom: 1px solid #f1f5f9;
-    padding-bottom: 4px;
 }
 
 .day-name {
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.hijri-date {
+    font-size: 0.65rem;
     color: #94a3b8;
+    font-weight: 500;
+    display: block;
 }
 
 .day-number {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-main);
 }
 
-/* تنسيق المواعيد داخل الخلية */
+/* --- المواعيد والمهام --- */
 .event-item {
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    border-radius: 6px;
-    margin-bottom: 4px;
-    border-right: 3px solid;
-    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 5px 8px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    border-right: 4px solid transparent;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -102,163 +133,124 @@ body {
 }
 
 .event-item:hover {
-    transform: scale(1.02);
+    transform: scale(1.03);
+    filter: brightness(0.95);
 }
 
-/* حالة الإجازة */
-.is-holiday {
-    background-color: var(--holiday-bg) !important;
-}
+/* --- التمييز اللوني للحالات --- */
+.is-holiday { background-color: var(--holiday-bg) !important; }
 .holiday-tag {
-    color: #c2410c;
-    font-size: 0.7rem;
-    font-weight: bold;
+    color: var(--holiday-text);
+    font-size: 0.65rem;
+    font-weight: 800;
+    margin-bottom: 4px;
     display: block;
-    margin-top: 4px;
 }
 
-/* حالة الفترة الهامة */
-.is-period {
-    background-color: var(--period-bg) !important;
+.is-period { background-color: var(--period-bg) !important; }
+
+.is-procedure { background-color: var(--procedure-bg) !important; }
+.procedure-tag {
+    color: var(--procedure-text);
+    font-size: 0.65rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+    display: block;
 }
 
-/* تمييز اليوم الحالي */
-.is-today {
-    box-shadow: inset 0 0 0 2px var(--today-border);
+/* --- تصميم النوافذ المنبثقة (Modals) --- */
+.modal-open {
+    overflow: hidden;
 }
 
-/* تنسيقات الموبايل */
+#settingsModal {
+    transition: transform 0.3s ease-in-out;
+}
+
+/* صفوف الإدخال في الإعدادات */
+#coursesList > div, #holidaysList > div, #periodsList > div, #proceduresList > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    background: white;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 120px;
+}
+
+.field-group label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+/* --- التجاوب مع الجوال (Mobile Responsiveness) --- */
+@media (max-width: 1024px) {
+    .week-row {
+        grid-template-columns: 60px repeat(5, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
     .week-row {
-        grid-template-columns: 1fr; /* تحويل الشبكة إلى عمود واحد في الجوال */
+        grid-template-columns: 1fr; /* تحويل الأسبوع لعمود واحد في الجوال */
         background-color: transparent;
         border: none;
-        gap: 10px;
+        gap: 15px;
     }
     
     .week-label {
         border: none;
-        border-radius: 8px;
-        padding: 5px;
-        background-color: #334155;
+        border-radius: 12px;
+        padding: 8px;
+        background-color: var(--text-main);
         color: white;
+        flex-direction: row;
+        gap: 10px;
     }
 
     .day-cell {
         min-height: auto;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
 
     .day-header {
         border-bottom: none;
     }
+
+    #settingsForm {
+        padding: 20px;
+    }
 }
 
-/* أنيميشن للنوافذ المنبثقة */
-@keyframes modalIn {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
+/* --- تحسينات بصرية إضافية --- */
+input:focus, select:focus, textarea:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
-#settingsModal > div {
-    animation: modalIn 0.3s ease-out;
+.close-modal:hover i, .close-detail:hover i {
+    transform: rotate(90deg);
 }
 
-/* تحسين حاوية الصفوف المضافة ديناميكياً */
-#coursesList > div, #holidaysList > div, #periodsList > div {
-    display: flex;
-    flex-wrap: wrap; /* للسماح بالعناصر بالنزول لسطر جديد في الشاشات الصغيرة */
-    gap: 8px;
-    align-items: center;
-    background: #f8fafc;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
+i {
+    transition: transform 0.2s ease;
 }
 
-/* تأكد من أن المدخلات تأخذ مساحة كافية ولا تتقلص */
-.item-start, .item-end {
-    flex: 1;
-    min-width: 120px;
-}
-
-.item-name {
-    flex: 2;
-    min-width: 150px;
-}
-
-/* إصلاح مشكلة قص النافذة المنبثقة */
-#settingsModal > div {
-    max-height: 95vh;
-    display: flex;
-    flex-direction: column;
-}
-
-#settingsForm {
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-#loadingOverlay.fade-out {
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* تحسين أداء الرندرة */
-#calendarGrid {
-    contain: content; /* يساعد المتصفح على تسريع رسم العناصر */
-}
-
-/* تحسين شكل السكرول بار داخل المودال */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 5px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
-}
-
-/* تنسيق صفوف الإدخال الديناميكية */
-#coursesList > div, #holidaysList > div, #periodsList > div {
-    display: flex;
-    flex-wrap: wrap; /* يمنع التداخل في الشاشات الصغيرة */
-    gap: 10px;
-    align-items: center;
-    background: white;
-    padding: 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    transition: all 0.2s;
-}
-
-#coursesList > div:hover {
-    border-color: #3b82f6;
-    background: #f0f7ff;
-}
-
-/* ضبط مرونة الحقول */
-.field-group {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-width: 100px;
-}
-
-.field-group label {
-    font-size: 10px;
-    color: #94a3b8;
-    margin-bottom: 2px;
-}
-
-input[type="text"], input[type="date"] {
-    font-size: 13px;
-    padding: 6px 10px;
-}
-
-/* استايل زر الحذف */
-.remove-row {
-    margin-top: auto;
-    margin-bottom: 5px;
+/* منع القص في الحقول النصية داخل المودال */
+textarea {
+    resize: vertical;
+    min-height: 100px;
 }
