@@ -38,24 +38,49 @@ function populateCourseSelect() {
 }
 
 // --- إضافة صفوف في الإعدادات (نفس الكود السابق) ---
+// دالة إنشاء الصفوف بشكل محسن
 function createRow(containerId, type, data = {}) {
     const container = document.getElementById(containerId);
     const div = document.createElement('div');
-    div.className = 'flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-dashed border-gray-300';
     
     if (type === 'course') {
-        div.innerHTML = `<input type="text" placeholder="اسم المقرر" value="${data.name || ''}" class="course-name flex-1 p-1 border rounded" required>
-            <input type="text" placeholder="الرمز" value="${data.code || ''}" class="course-code w-20 p-1 border rounded" required>
-            <input type="color" value="${data.color || '#3b82f6'}" class="course-color w-10 h-8 rounded cursor-pointer">
-            <button type="button" class="text-red-500 remove-row"><i data-lucide="trash-2"></i></button>`;
+        div.innerHTML = `
+            <div class="field-group flex-[2]">
+                <label>اسم المقرر</label>
+                <input type="text" placeholder="مثلاً: فيزياء 1" value="${data.name || ''}" class="course-name w-full border rounded-lg p-2 outline-none" required>
+            </div>
+            <div class="field-group flex-1">
+                <label>الرمز</label>
+                <input type="text" placeholder="رمز" value="${data.code || ''}" class="course-code w-full border rounded-lg p-2 outline-none" required>
+            </div>
+            <div class="field-group w-12 flex-none">
+                <label>اللون</label>
+                <input type="color" value="${data.color || '#3b82f6'}" class="course-color w-full h-9 rounded cursor-pointer border-none p-1">
+            </div>
+            <button type="button" class="remove-row text-red-400 hover:text-red-600 transition"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+        `;
     } else {
-        div.innerHTML = `<input type="text" placeholder="الاسم" value="${data.name || ''}" class="item-name flex-1 p-1 border rounded" required>
-            <input type="date" value="${data.start || ''}" class="item-start p-1 border rounded text-xs" required>
-            <input type="date" value="${data.end || ''}" class="item-end p-1 border rounded text-xs" required>
-            <button type="button" class="text-red-500 remove-row"><i data-lucide="trash-2"></i></button>`;
+        div.innerHTML = `
+            <div class="field-group flex-[2]">
+                <label>المسمى</label>
+                <input type="text" placeholder="الاسم" value="${data.name || ''}" class="item-name w-full border rounded-lg p-2 outline-none font-medium" required>
+            </div>
+            <div class="field-group flex-1">
+                <label>من</label>
+                <input type="date" value="${data.start || ''}" class="item-start w-full border rounded-lg p-1 outline-none text-xs" required>
+            </div>
+            <div class="field-group flex-1">
+                <label>إلى</label>
+                <input type="date" value="${data.end || ''}" class="item-end w-full border rounded-lg p-1 outline-none text-xs" required>
+            </div>
+            <button type="button" class="remove-row text-red-400 hover:text-red-600 transition"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+        `;
+        // تفعيل القيد فور إنشاء الصف
+        setupDateConstraint(div.querySelector('.item-start'), div.querySelector('.item-end'));
     }
+
     container.appendChild(div);
-    lucide.createIcons();
+    lucide.createIcons(); // لتفعيل الأيقونات الجديدة
     div.querySelector('.remove-row').onclick = () => div.remove();
 }
 
@@ -198,7 +223,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
 }
 
-// --- وظيفة تقييد تاريخ النهاية ---
+// دالة لفرض قيود التاريخ (تاريخ النهاية لا يسبق البداية)
 function setupDateConstraint(startInput, endInput) {
     startInput.addEventListener('change', () => {
         endInput.min = startInput.value;
