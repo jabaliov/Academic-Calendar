@@ -186,4 +186,22 @@ const App = {
     }
 };
 
+
+
 App.init();
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // إذا وجد نسخة جديدة، يخبر المستخدم أو يحدث تلقائياً
+                    if(confirm("توجد تحديثات جديدة للتقويم، هل تود التحديث الآن؟")) {
+                        location.reload();
+                    }
+                }
+            };
+        };
+    });
+}
