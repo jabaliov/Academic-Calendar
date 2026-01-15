@@ -1,6 +1,6 @@
 /**
- * App.js - المحرك التشغيلي للتقويم الأكاديمي
- * صُمم ليدير تدفق البيانات، التحقق من النطاق الزمني، والتفاعل مع الواجهات الاحترافية.
+ * App.js - المحرك التشغيلي للتقويم الأكاديمي الاحترافي
+ * يدير تدفق البيانات، التحقق من النطاق الزمني، والعمليات المتقدمة للمقررات.
  */
 
 const App = {
@@ -53,7 +53,7 @@ const App = {
         document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
         document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
 
-        // تبديل نوع الموعد (يوم واحد أو فترة)
+        // تبديل نوع الموعد (يوم واحد أو فترة زمنية ممتدة)
         document.getElementById('typeSingle').onclick = () => this.toggleEventType('single');
         document.getElementById('typeRange').onclick = () => this.toggleEventType('range');
 
@@ -61,15 +61,14 @@ const App = {
         document.getElementById('settingsForm').onsubmit = async (e) => await this.handleSettingsSubmit(e);
         document.getElementById('eventForm').onsubmit = async (e) => await this.handleEventSubmit(e);
 
-        // إدارة البيانات
+        // إدارة البيانات (النسخ الاحتياطي والمشاركة)
         document.getElementById('exportFull').onclick = () => Utils.downloadJSON(this.data, 'التقويم_الأكاديمي_الكامل.json');
-        document.getElementById('importFullBtn').onclick = () => this.triggerImport('full');
-        document.getElementById('universalFilePicker').onchange = (e) => this.handleFileImport(e);
-        document.getElementById('resetAllData').onclick = async () => await Storage.clear();
-
-        // تصدير واستيراد مقرر معين
         document.getElementById('exportCourse').onclick = () => this.handleCourseExport();
+        document.getElementById('importFullBtn').onclick = () => this.triggerImport('full');
         document.getElementById('importCourseBtn').onclick = () => this.triggerImport('merge');
+        document.getElementById('universalFilePicker').onchange = (e) => this.handleFileImport(e);
+        
+        document.getElementById('resetAllData').onclick = async () => await Storage.clear();
     },
 
     /**
@@ -83,17 +82,16 @@ const App = {
         if (type === 'single') {
             endContainer.classList.add('hidden');
             singleBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all bg-white text-blue-600 shadow-sm';
-            rangeBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all text-slate-400 hover:text-slate-600';
-            document.getElementById('eventEndDate').value = ''; // تفريغ تاريخ النهاية
+            rangeBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all text-slate-400';
+            document.getElementById('eventEndDate').value = ''; 
         } else {
             endContainer.classList.remove('hidden');
             rangeBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all bg-white text-blue-600 shadow-sm';
-            singleBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all text-slate-400 hover:text-slate-600';
+            singleBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all text-slate-400';
         }
     },
 
     prepareSettingsForm() {
-        // تنظيف القوائم الحالية قبل ملئها
         ['coursesList', 'holidaysList', 'periodsList', 'proceduresList'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.innerHTML = '';
@@ -102,7 +100,7 @@ const App = {
         // بناء الصفوف بناءً على البيانات المخزنة
         this.data.courses.forEach(c => UIManager.createRow('coursesList', 'course', c));
         this.data.holidays.forEach(h => UIManager.createRow('holidaysList', 'holiday', h));
-        this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p)); // الفترات أصبحت عامة الآن
+        this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p)); 
         this.data.procedures.forEach(pr => UIManager.createRow('proceduresList', 'procedure', pr));
     },
 
@@ -111,7 +109,7 @@ const App = {
         const startSem = document.getElementById('startDate').value;
         const endSem = document.getElementById('endDate').value;
 
-        // ميزة: التحقق من النطاق الزمني للفصل الدراسي
+        // التحقق من منطقية النطاق الزمني للفصل الدراسي
         if (startSem >= endSem) {
             return UIManager.showToast('تاريخ نهاية الفصل يجب أن يكون بعد تاريخ البداية', 'error');
         }
@@ -119,7 +117,7 @@ const App = {
         this.data.config.startDate = startSem;
         this.data.config.endDate = endSem;
         
-        // جمع المقررات
+        // حفظ المقررات
         this.data.courses = Array.from(document.querySelectorAll('#coursesList > .dynamic-row')).map(row => ({
             id: row.dataset.id || Utils.generateId('c'),
             name: row.querySelector('.course-name').value,
@@ -127,35 +125,28 @@ const App = {
             color: row.querySelector('.course-color').value
         }));
 
-        // دالة للتحقق من وقوع التاريخ ضمن نطاق الفصل
+        // التحقق من وقوع التواريخ العامة ضمن نطاق الفصل الدراسي
         const isOutside = (date) => date < startSem || date > endSem;
-
-        // جمع البيانات الأخرى مع التحقق من التواريخ
         const categories = ['holidays', 'periods', 'procedures'];
+        
         for (const cat of categories) {
             const rows = Array.from(document.querySelectorAll(`#${cat}List > .dynamic-row`));
             const items = [];
-            
             for (const row of rows) {
                 const s = row.querySelector('.item-start').value;
                 const e = row.querySelector('.item-end').value;
 
                 if (isOutside(s) || isOutside(e)) {
-                    UIManager.showToast(`تنبيه: أحد تواريخ ${cat} يقع خارج نطاق الفصل الدراسي`, 'error');
+                    UIManager.showToast(`تاريخ في قسم ${cat} خارج نطاق الفصل الدراسي`, 'error');
                     return; 
                 }
-
-                items.push({
-                    name: row.querySelector('.item-name').value,
-                    start: s,
-                    end: e
-                });
+                items.push({ name: row.querySelector('.item-name').value, start: s, end: e });
             }
             this.data[cat] = items;
         }
 
         await Storage.save(this.data);
-        UIManager.showToast('تم تحديث إعدادات الفصل الدراسي بنجاح', 'success');
+        UIManager.showToast('تم حفظ الإعدادات بنجاح', 'success');
         this.renderAll();
         UIManager.toggleModal('settingsModal', false);
     },
@@ -163,7 +154,7 @@ const App = {
     openAddEvent(date) {
         UIManager.updateCourseSelects(this.data.courses);
         document.getElementById('eventDate').value = date;
-        this.toggleEventType('single'); // الافتراضي موعد ليوم واحد
+        this.toggleEventType('single'); 
         UIManager.toggleModal('eventModal', true);
     },
 
@@ -172,7 +163,7 @@ const App = {
         const startDate = document.getElementById('eventDate').value;
         const endDate = document.getElementById('eventEndDate').value || startDate;
 
-        // ميزة: التحقق من وقوع الموعد ضمن الفصل الدراسي
+        // التحقق من تاريخ الموعد الجديد
         if (startDate < this.data.config.startDate || endDate > this.data.config.endDate) {
             return UIManager.showToast('لا يمكن إضافة موعد خارج نطاق الفصل الدراسي', 'error');
         }
@@ -187,7 +178,7 @@ const App = {
         });
 
         await Storage.save(this.data);
-        UIManager.showToast('تم تثبيت الموعد في التقويم', 'success');
+        UIManager.showToast('تمت إضافة الموعد للجدول', 'success');
         this.renderAll();
         UIManager.toggleModal('eventModal', false);
         e.target.reset();
@@ -198,35 +189,31 @@ const App = {
         if (!ev) return;
         
         const course = this.data.courses.find(c => c.id == ev.courseId);
-        
         document.getElementById('detailHeader').style.backgroundColor = course ? course.color : '#0F172A';
         document.getElementById('detailCourseName').innerText = ev.title;
         document.getElementById('editTitle').value = ev.title;
         document.getElementById('editNotes').value = ev.notes || '';
         
-        // عرض التاريخ (يوم واحد أو فترة)
         const dateText = ev.start === ev.end ? ev.start : `${ev.start} ← ${ev.end}`;
         document.getElementById('detailDateText').innerText = dateText;
 
         UIManager.toggleModal('detailModal', true);
 
-        // حذف الموعد
         document.getElementById('deleteEvent').onclick = async () => {
-            if(confirm('هل تريد حذف هذا الموعد نهائياً؟')) {
+            if(confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
                 this.data.events = this.data.events.filter(e => e.id !== id);
                 await Storage.save(this.data);
-                UIManager.showToast('تم حذف الموعد من الجدول', 'info');
+                UIManager.showToast('تم حذف الموعد', 'info');
                 this.renderAll();
                 UIManager.toggleModal('detailModal', false);
             }
         };
 
-        // تحديث الموعد
         document.getElementById('saveEditEvent').onclick = async () => {
             ev.title = document.getElementById('editTitle').value;
             ev.notes = document.getElementById('editNotes').value;
             await Storage.save(this.data);
-            UIManager.showToast('تم تحديث تفاصيل الموعد', 'success');
+            UIManager.showToast('تم تحديث البيانات', 'success');
             this.renderAll();
             UIManager.toggleModal('detailModal', false);
         };
@@ -237,37 +224,39 @@ const App = {
         if(!container) return;
         
         let html = `
-            <label class="flex items-center gap-2 bg-white border border-slate-100 px-4 py-2 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all shadow-sm">
-                <input type="checkbox" checked value="holidays" class="w-4 h-4 rounded-lg accent-orange-500">
+            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all">
+                <input type="checkbox" checked value="holidays" class="accent-orange-500">
                 <span class="text-xs font-bold text-slate-600">الإجازات</span>
             </label>
-            <label class="flex items-center gap-2 bg-white border border-slate-100 px-4 py-2 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all shadow-sm">
-                <input type="checkbox" checked value="periods" class="w-4 h-4 rounded-lg accent-purple-500">
+            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all">
+                <input type="checkbox" checked value="periods" class="accent-purple-500">
                 <span class="text-xs font-bold text-slate-600">الفترات</span>
             </label>
-            <label class="flex items-center gap-2 bg-white border border-slate-100 px-4 py-2 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all shadow-sm">
-                <input type="checkbox" checked value="procedures" class="w-4 h-4 rounded-lg accent-emerald-500">
+            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all">
+                <input type="checkbox" checked value="procedures" class="accent-emerald-500">
                 <span class="text-xs font-bold text-slate-600">الإجراءات</span>
-            </label>
-            <label class="flex items-center gap-2 bg-white border border-slate-100 px-4 py-2 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all shadow-sm">
-                <input type="checkbox" checked value="general" class="w-4 h-4 rounded-lg accent-slate-500">
-                <span class="text-xs font-bold text-slate-600">عام</span>
             </label>
         `;
         
         this.data.courses.forEach(c => {
             html += `
-                <label class="flex items-center gap-2 bg-white border border-slate-100 px-4 py-2 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all shadow-sm" style="border-right: 4px solid ${c.color}">
-                    <input type="checkbox" checked value="${c.id}" class="w-4 h-4" style="accent-color:${c.color}">
+                <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all" style="border-right: 4px solid ${c.color}">
+                    <input type="checkbox" checked value="${c.id}" style="accent-color:${c.color}">
                     <span class="text-xs font-bold text-slate-600">${Utils.escapeHTML(c.name)}</span>
-                </label>
-            `;
+                </label>`;
         });
         
         container.innerHTML = html;
-        container.querySelectorAll('input').forEach(i => {
-            i.onchange = () => CalendarEngine.render(this.data);
-        });
+        container.querySelectorAll('input').forEach(i => i.onchange = () => CalendarEngine.render(this.data));
+    },
+
+    handleCourseExport() {
+        const cid = document.getElementById('exportCourseId').value;
+        const course = this.data.courses.find(c => c.id == cid);
+        if (!course) return UIManager.showToast('الرجاء اختيار مقرر أولاً', 'info');
+        
+        const events = this.data.events.filter(ev => ev.courseId == cid);
+        Utils.downloadJSON({ type: 'course_package', course, events }, `مقرر_${course.name}.json`);
     },
 
     triggerImport(mode) {
@@ -278,64 +267,31 @@ const App = {
         }
     },
 
-   handleFileImport(e) {
-    const reader = new FileReader();
-    const mode = e.target.dataset.mode;
-    
-    reader.onload = async (event) => {
-        try {
-            const imported = JSON.parse(event.target.result);
-            if (mode === 'full') {
-                this.data = { ...DEFAULT_DATA, ...imported };
-            } else {
-                // منطق استيراد مقرر معين (الميزة المُعادة)
-                if (imported.type !== 'course_package') {
-                    return UIManager.showToast('الملف المرفوع غير صالح لمقرر منفرد', 'error');
+    handleFileImport(e) {
+        const reader = new FileReader();
+        const mode = e.target.dataset.mode;
+        
+        reader.onload = async (event) => {
+            try {
+                const imported = JSON.parse(event.target.result);
+                if (mode === 'full') {
+                    this.data = { ...DEFAULT_DATA, ...imported };
+                } else {
+                    if (imported.type !== 'course_package') return UIManager.showToast('ملف غير صالح لمقرر', 'error');
+                    if (!this.data.courses.find(c => c.id == imported.course.id)) this.data.courses.push(imported.course);
+                    imported.events.forEach(ev => {
+                        if (!this.data.events.find(old => old.start === ev.start && old.title === ev.title)) this.data.events.push(ev);
+                    });
                 }
-                // إضافة المقرر إذا لم يكن موجوداً
-                if (!this.data.courses.find(c => c.id == imported.course.id)) {
-                    this.data.courses.push(imported.course);
-                }
-                // دمج المواعيد ومنع التكرار
-                imported.events.forEach(ev => {
-                    if (!this.data.events.find(old => old.start === ev.start && old.title === ev.title)) {
-                        this.data.events.push(ev);
-                    }
-                });
+                await Storage.save(this.data);
+                UIManager.showToast('تمت العملية بنجاح، جاري التحديث...', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } catch (err) { 
+                UIManager.showToast('خطأ في معالجة الملف', 'error');
             }
-            await Storage.save(this.data);
-            UIManager.showToast('تم استيراد البيانات بنجاح، جاري التحديث...', 'success');
-            setTimeout(() => location.reload(), 1000);
-        } catch (err) { 
-            UIManager.showToast('خطأ في قراءة أو دمج الملف', 'error');
-        }
-    };
-    reader.readAsText(e.target.files[0]);
+        };
+        reader.readAsText(e.target.files[0]);
     }
 };
 
-// تشغيل التطبيق
 App.init();
-
-// منطق تحديث التطبيق عبر Service Worker
-if ('serviceWorker' in navigator) {
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
-        refreshing = true;
-        window.location.reload();
-    });
-
-    navigator.serviceWorker.register('sw.js').then(reg => {
-        reg.onupdatefound = () => {
-            const installingWorker = reg.installing;
-            installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    if (confirm("يوجد تحديث جديد للواجهة، هل تود التحديث الآن؟")) {
-                        installingWorker.postMessage({ type: 'SKIP_WAITING' });
-                    }
-                }
-            };
-        };
-    });
-}
