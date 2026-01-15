@@ -87,6 +87,7 @@ const App = {
         });
 
         await Storage.save(this.data);
+        UIManager.showToast('تم حفظ الإعدادات بنجاح'، 'success');
         this.renderAll();
         UIManager.toggleModal('settingsModal', false);
     },
@@ -107,6 +108,7 @@ const App = {
             notes: ''
         });
         await Storage.save(this.data);
+        UIManager.showToast('تمت إضافة الموعد للجدول'، 'success');
         this.renderAll();
         UIManager.toggleModal('eventModal', false);
         e.target.reset();
@@ -179,7 +181,7 @@ const App = {
                 if (mode === 'full') {
                     this.data = { ...DEFAULT_DATA, ...imported };
                 } else {
-                    if (imported.type !== 'course_package') return alert('ملف غير صالح لمقرر');
+                    if (imported.type !== 'course_package') return UIManager.showToast('عذراً، هذا الملف غير صالح لمقرر'، 'error');
                     if (!this.data.courses.find(c => c.id == imported.course.id)) this.data.courses.push(imported.course);
                     imported.events.forEach(ev => {
                         if (!this.data.events.find(old => old.date === ev.date && old.title === ev.title)) this.data.events.push(ev);
@@ -187,7 +189,7 @@ const App = {
                 }
                 await Storage.save(this.data);
                 location.reload();
-            } catch (err) { alert('خطأ في قراءة الملف'); }
+            } catch (err) { UIManager.showToast('حدث خطأ أثناء قراءة الملف'، 'error'); }
         };
         reader.readAsText(e.target.files[0]);
     },
