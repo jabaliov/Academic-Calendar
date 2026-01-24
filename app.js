@@ -81,6 +81,39 @@ const App = {
         }
     },
 
+    // دالة استيراد النسخة الاحتياطية (كانت مفقودة)
+    async handleFileImport(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+
+                // التحقق البسيط من صحة الهيكلة
+                if (!importedData.config || !importedData.courses) {
+                    throw new Error("Invalid Data Structure");
+                }
+
+                // حفظ البيانات في قاعدة البيانات
+                await Storage.save(importedData);
+                
+                // إعادة تحميل البيانات في الذاكرة وتحديث الواجهة
+                this.data = await Storage.load();
+                this.renderAll();
+                
+                UIManager.showToast('تم استعادة النسخة الاحتياطية بنجاح', 'success');
+            } catch (error) {
+                console.error("Import Error:", error);
+                UIManager.showToast('فشل الاستيراد: الملف تالف أو غير متوافق', 'error');
+            }
+            // تصفير حقل الإدخال للسماح بإعادة الرفع
+            e.target.value = '';
+        };
+        reader.readAsText(file);
+    },
+
     bindEvents() {
         document.getElementById('openSettings').onclick = () => { this.prepareSettingsForm(); UIManager.toggleModal('settingsModal', true); };
         document.getElementById('addEventBtn').onclick = () => this.openAddEvent(Utils.formatDate(new Date()));
