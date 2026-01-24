@@ -1,173 +1,212 @@
 /**
- * CalendarEngine.js
- * المحرك البصري للتقويم الأكاديمي - النسخة الاحترافية المطورة
- * يركز على تجربة المستخدم (UX) والتسلسل الهرمي للمعلومات.
+ * calendar-engine.js - محرك رندر التقويم الذكي
+ * مسؤول عن تحويل البيانات إلى واجهات رسومية ومعالجة منطق الأوقات المعقد.
  */
 
 const CalendarEngine = {
-    async render(data) {
-        const { startDate, endDate } = data.config;
-        if (!startDate || !endDate) return this.hideLoading();
+    /**
+     * الوظيفة الرئيسية لبدء رسم التقويم
+     */
+    render(data) {
+        const container = document.getElementById('calendarGrid');
+        if (!container) return;
 
+        container.innerHTML = ''; // تنظيف الشبكة الحالية
         this.showLoading();
-        const grid = document.getElementById('calendarGrid');
-        grid.innerHTML = '';
-        const fragment = document.createDocumentFragment();
 
-        let current = new Date(startDate);
-        const last = new Date(endDate);
-        const today = new Date();
-        const totalDays = Math.ceil((last - current) / (1000 * 60 * 60 * 24)) || 1;
-        let processedDays = 0;
-
-        // البدء دائماً من يوم الأحد لضمان اتساق شكل الأسبوع
-        while (current.getDay() !== 0) current.setDate(current.getDate() - 1);
-        
-        const filterContainer = document.getElementById('filterContainer');
-        const activeFilters = Array.from(filterContainer.querySelectorAll('input:checked')).map(i => i.value);
-        
-        let academicWeek = 1;
-
-        while (current <= last) {
-            processedDays += 7;
-            this.updateProgressBar(processedDays, totalDays);
-
-            // منطق: التحقق مما إذا كان الأسبوع بالكامل إجازة لتخطي عدّه دراسياً
-            let isFullHolidayWeek = true;
-            let tempDate = new Date(current);
-            for (let i = 0; i < 7; i++) {
-                const ds = Utils.formatDate(tempDate);
-                if (!data.holidays.some(h => ds >= h.start && ds <= h.end)) {
-                    isFullHolidayWeek = false;
-                    break;
-                }
-                tempDate.setDate(tempDate.getDate() + 1);
-            }
-
-            const weekRow = document.createElement('div');
-            // شبكة متجاوبة: عمود للرقم وعمود للأيام
-            weekRow.className = 'grid grid-cols-1 md:grid-cols-[100px_1fr] gap-6 mb-10 items-stretch';
-            
-            const weekLabel = document.createElement('div');
-            weekLabel.className = 'flex md:flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-4 transition-all hover:shadow-md';
-            
-            if (isFullHolidayWeek) {
-                weekLabel.innerHTML = `<span class="text-[10px] font-black text-orange-500 uppercase md:rotate-180 md:[writing-mode:vertical-lr] tracking-[0.2em]">إجازة رسمية</span>`;
-                weekLabel.classList.add('bg-orange-50/40', 'border-orange-100');
-            } else {
-                weekLabel.innerHTML = `
-                    <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">الأسبوع</span>
-                    <span class="text-4xl font-black text-blue-600 leading-none">${academicWeek}</span>
-                `;
-                academicWeek++;
-            }
-            weekRow.appendChild(weekLabel);
-
-            const daysGrid = document.createElement('div');
-            daysGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 flex-1';
-
-            for (let i = 0; i < 7; i++) {
-                const dateStr = Utils.formatDate(current);
-                if (current.getDay() < 5) { // عرض الأحد إلى الخميس
-                    const isToday = Utils.formatDate(today) === dateStr;
-                    const cell = this.createDayCell(current, dateStr, data, activeFilters, isToday);
-                    daysGrid.appendChild(cell);
-                }
-                current.setDate(current.getDate() + 1);
-            }
-            weekRow.appendChild(daysGrid);
-            fragment.appendChild(weekRow);
-            
-            if (academicWeek % 4 === 0) await new Promise(r => requestAnimationFrame(r));
+        if (!data.config.startDate || !data.config.endDate) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <i data-lucide="calendar-days" class="w-16 h-16 mb-4 opacity-20"></i>
+                    <p class="font-bold text-lg">برجاء تهيئة النطاق الزمني من الإعدادات</p>
+                </div>`;
+            lucide.createIcons();
+            this.hideLoading();
+            return;
         }
 
-        grid.appendChild(fragment);
-        this.hideLoading();
+        // استخراج التواريخ وبناء الشهور
+        const months = this.getMonthsRange(data.config.startDate, data.config.endDate);
+        
+        months.forEach(month => {
+            const monthHTML = this.renderMonth(month.year, month.month, data);
+            container.appendChild(monthHTML);
+        });
+
         lucide.createIcons();
+        this.hideLoading();
     },
 
-    createDayCell(current, dateStr, data, filters, isToday) {
-        const cell = document.createElement('div');
-        const isHoliday = filters.includes('holidays') && data.holidays.some(h => dateStr >= h.start && dateStr <= h.end);
-        const isProcedure = filters.includes('procedures') && data.procedures.some(p => dateStr >= p.start && dateStr <= p.end);
-        
-        cell.className = `group relative bg-white rounded-[2.5rem] p-6 border border-slate-100 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-200/40 hover:-translate-y-1 cursor-pointer flex flex-col min-h-[180px] ${isToday ? 'ring-2 ring-blue-500 ring-offset-4' : ''} ${isHoliday ? 'bg-orange-50/10' : ''}`;
-        
-        const hijri = Utils.getHijriDate(current);
-        const monthName = current.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'long' });
-        const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    /**
+     * معالجة منطق الوقت لكل حدث (محاضرة أو موعد يدوي)
+     * هنا يتم تحديد الوقت بناءً على: رقم الحصة، الجنس، ووضع رمضان
+     */
+    getEventTimeDisplay(event, config) {
+        // إذا كان موعداً يدوياً عادياً بدون حصص
+        if (!event.periods || event.periods.length === 0) {
+            return event.startTime ? `${event.startTime}` : "موعد طوال اليوم";
+        }
 
-        // تصميم الترويسة الاحترافي (رقم اليوم، الشهر، الهجري، واسم اليوم)
+        // تحديد قائمة الأوقات المرجعية المناسبة
+        let mapping;
+        if (config.isRamadanMode) {
+            mapping = config.timeMappings.ramadan;
+        } else {
+            mapping = config.timeMappings[event.gender] || config.timeMappings.male;
+        }
+
+        try {
+            // الحصول على وقت بداية أول حصة ونهاية آخر حصة في المصفوفة
+            const firstPeriodIndex = event.periods[0] - 1;
+            const lastPeriodIndex = event.periods[event.periods.length - 1] - 1;
+
+            const startTime = mapping[firstPeriodIndex].start;
+            const endTime = mapping[lastPeriodIndex].end;
+
+            return `${startTime} - ${endTime}`;
+        } catch (e) {
+            return "خطأ في توقيت الحصة";
+        }
+    },
+
+    /**
+     * رسم شهر واحد داخل التقويم
+     */
+    renderMonth(year, month, data) {
+        const monthContainer = document.createElement('div');
+        monthContainer.className = 'animate-in fade-in slide-in-from-bottom-4 duration-500';
+        
+        const monthName = new Intl.DateTimeFormat('ar-SA', { month: 'long', year: 'numeric' }).format(new Date(year, month));
+        
         let html = `
-            <div class="flex justify-between items-start mb-5">
-                <div class="flex flex-col">
-                    <span class="text-4xl font-light text-slate-900 tracking-tighter group-hover:text-blue-600 transition-colors">${current.getDate()}</span>
-                    <div class="flex flex-col mt-1">
-                        <span class="text-[10px] font-black text-blue-600 uppercase tracking-tight">${monthName}</span>
-                        <span class="text-[10px] font-bold text-slate-400 mt-0.5">${hijri}</span>
-                    </div>
-                </div>
-                <div class="flex flex-col items-end">
-                    <span class="text-[10px] font-black text-slate-300 group-hover:text-slate-500 transition-colors tracking-widest uppercase">${dayNames[current.getDay()]}</span>
-                    ${isToday ? '<span class="flex h-2 w-2 rounded-full bg-blue-600 mt-2 animate-pulse"></span>' : ''}
-                </div>
-            </div>`;
-        
-        // عرض التصنيفات العامة (إجازات، فترات، إجراءات)
-        const categories = [
-            { id: 'holidays', color: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-100' },
-            { id: 'periods', color: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-100' },
-            { id: 'procedures', color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-100' }
-        ];
+            <div class="flex items-center gap-4 mb-6">
+                <h3 class="text-2xl font-black text-slate-800">${monthName}</h3>
+                <div class="h-[2px] flex-1 bg-slate-100 rounded-full"></div>
+            </div>
+            <div class="grid grid-cols-7 gap-2">
+        `;
 
-        categories.forEach(cat => {
-            if (filters.includes(cat.id)) {
-                const items = data[cat.id].filter(i => dateStr >= i.start && dateStr <= i.end);
-                items.forEach(item => {
-                    html += `
-                        <div class="flex items-center gap-2 mb-1.5 animate-in fade-in slide-in-from-right-2">
-                            <span class="w-1 h-3 rounded-full ${cat.color}"></span>
-                            <span class="text-[9px] font-black ${cat.text} truncate">${Utils.escapeHTML(item.name)}</span>
-                        </div>`;
-                });
-            }
+        // أسماء الأيام
+        ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'].forEach(day => {
+            html += `<div class="text-center text-[10px] font-black text-slate-400 uppercase py-2">${day}</div>`;
         });
 
-        // عرض المواعيد الدراسية (دعم المواعيد الممتدة والملاحظات)
-        data.events.filter(ev => dateStr >= ev.start && dateStr <= ev.end && filters.includes(ev.courseId)).forEach(ev => {
-            const course = data.courses.find(c => c.id == ev.courseId);
-            const color = course ? course.color : '#64748B';
-            const isRange = ev.start !== ev.end;
-            
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // مربعات فارغة لبداية الشهر
+        for (let i = 0; i < firstDay; i++) html += `<div></div>`;
+
+        // رسم أيام الشهر
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = Utils.formatDate(new Date(year, month, day));
+            const isToday = dateStr === Utils.formatDate(new Date());
+            const dayEvents = this.getDayEvents(dateStr, data);
+
             html += `
-                <div class="event-card group/ev relative overflow-hidden p-3 rounded-2xl transition-all hover:scale-[1.03] active:scale-95 shadow-sm border border-slate-50 mb-2" 
-                     style="background: ${color}08; border-right: 4px solid ${color}"
-                     title="${Utils.escapeHTML(ev.notes || '')}"
-                     onclick="event.stopPropagation(); App.showEventDetail('${ev.id}')">
-                    <div class="flex flex-col">
-                        <span class="text-[8px] font-black opacity-50 uppercase tracking-tighter mb-0.5">${Utils.escapeHTML(course ? course.name : 'عام')}</span>
-                        <span class="text-[10px] font-bold text-slate-800 leading-tight truncate">${Utils.escapeHTML(ev.title)}</span>
-                        ${isRange ? '<span class="text-[7px] text-blue-500 font-bold italic mt-1">موعد ممتد</span>' : ''}
+                <div class="min-h-[120px] bg-white rounded-2xl p-2 border border-slate-100 transition-all hover:shadow-xl hover:shadow-slate-200/50 group ${isToday ? 'ring-2 ring-blue-500 ring-inset' : ''}">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-black ${isToday ? 'text-blue-600' : 'text-slate-400'}">${day}</span>
+                        ${dayEvents.length > 0 ? `<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>` : ''}
                     </div>
-                </div>`;
+                    <div class="space-y-1">
+                        ${this.renderDayEvents(dayEvents, data)}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `</div>`;
+        monthContainer.innerHTML = html;
+        return monthContainer;
+    },
+
+    /**
+     * رسم الأحداث داخل خلية اليوم
+     */
+    renderDayEvents(events, data) {
+        const activeFilters = Array.from(document.querySelectorAll('#filterContainer input:checked')).map(i => i.value);
+        
+        return events
+            .filter(ev => {
+                // الفلترة بناءً على نوع الحدث أو المقرر
+                if (ev.category) return activeFilters.includes(ev.category);
+                return activeFilters.includes(ev.courseId);
+            })
+            .map(ev => {
+                const course = data.courses.find(c => c.id === ev.courseId);
+                const color = course ? course.color : '#64748b';
+                const timeStr = this.getEventTimeDisplay(ev, data.config);
+                const isLecture = !!ev.periods;
+
+                return `
+                    <div onclick="App.showEventDetail('${ev.id}')" 
+                         class="p-1.5 rounded-lg text-[9px] font-bold cursor-pointer transition-all hover:scale-[1.02] active:scale-95 overflow-hidden"
+                         style="background-color: ${color}15; color: ${color}; border-right: 3px solid ${color}">
+                        <div class="truncate">${ev.title}</div>
+                        <div class="flex items-center gap-1 mt-0.5 opacity-70">
+                            <i data-lucide="clock" class="w-2.5 h-2.5"></i>
+                            <span>${timeStr}</span>
+                            ${isLecture ? `<span class="ml-1 bg-white/50 px-1 rounded uppercase text-[7px]">${ev.gender === 'female' ? 'بنات' : 'بنين'}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+    },
+
+    /**
+     * جلب كافة أحداث يوم معين (إجازات، فترات، محاضرات)
+     */
+    getDayEvents(dateStr, data) {
+        const events = [];
+
+        // 1. الإجازات
+        data.holidays.forEach(h => {
+            if (dateStr >= h.start && dateStr <= h.end) events.push({ ...h, title: h.name, category: 'holidays' });
         });
 
-        cell.innerHTML = html;
-        cell.onclick = () => App.openAddEvent(dateStr);
-        return cell;
+        // 2. الفترات الأكاديمية
+        data.periods.forEach(p => {
+            if (dateStr >= p.start && dateStr <= p.end) events.push({ ...p, title: p.name, category: 'periods' });
+        });
+
+        // 3. الإجراءات
+        data.procedures.forEach(pr => {
+            if (dateStr >= pr.start && dateStr <= pr.end) events.push({ ...pr, title: pr.name, category: 'procedures' });
+        });
+
+        // 4. المواعيد والمحاضرات
+        data.events.forEach(ev => {
+            if (dateStr >= ev.start && dateStr <= ev.end) events.push(ev);
+        });
+
+        return events;
     },
 
-    showLoading() { document.getElementById('loadingOverlay')?.classList.remove('fade-out'); },
-    hideLoading() { 
-        setTimeout(() => {
-            document.getElementById('loadingOverlay')?.classList.add('fade-out');
-        }, 300); 
+    getMonthsRange(start, end) {
+        const months = [];
+        let current = new Date(start);
+        const endDate = new Date(end);
+
+        while (current <= endDate) {
+            months.push({ year: current.getFullYear(), month: current.getMonth() });
+            current.setMonth(current.getMonth() + 1);
+        }
+        return months;
     },
-    updateProgressBar(p, t) {
-        const progress = Math.min(Math.round((p / t) * 100), 100);
+
+    showLoading() {
+        const loader = document.getElementById('loadingOverlay');
         const bar = document.getElementById('loadingBar');
-        const text = document.getElementById('loadingText');
-        if(bar) bar.style.width = `${progress}%`;
-        if(text) text.innerText = `${progress}%`;
+        if (loader) loader.classList.remove('hidden', 'opacity-0');
+        if (bar) bar.style.width = '100%';
+    },
+
+    hideLoading() {
+        const loader = document.getElementById('loadingOverlay');
+        if (loader) {
+            loader.classList.add('opacity-0');
+            setTimeout(() => loader.classList.add('hidden'), 700);
+        }
     }
 };
