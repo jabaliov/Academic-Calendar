@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uni-planner-v6'; // تحديث الإصدار لإجبار المتصفح على تحميل التغييرات الجديدة
+const CACHE_NAME = 'uni-planner-v6.1'; // تحديث الإصدار لإجبار المتصفح على تحميل التغييرات الجديدة
 const assets = [
     './',
     './index.html',
