@@ -82,6 +82,7 @@ const App = {
     },
 
     // دالة استيراد النسخة الاحتياطية (كانت مفقودة)
+    // دالة الاستيراد الذكي (Smart Merge)
     async handleFileImport(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -89,31 +90,56 @@ const App = {
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
-                const importedData = JSON.parse(event.target.result);
+                const imported = JSON.parse(event.target.result);
+                const current = await Storage.load(); // تحميل البيانات الحالية أولاً
 
-                // التحقق البسيط من صحة الهيكلة
-                if (!importedData.config || !importedData.courses) {
-                    throw new Error("Invalid Data Structure");
-                }
+                // 1. دمج الإعدادات (نحافظ على القديم إذا لم يوجد جديد)
+                // نضمن بقاء timeMappings لعدم انهيار الواجهة
+                const mergedConfig = {
+                    ...current.config,
+                    ...imported.config,
+                    timeMappings: imported.config?.timeMappings || current.config.timeMappings || DEFAULT_DATA.config.timeMappings
+                };
 
-                // حفظ البيانات في قاعدة البيانات
-                await Storage.save(importedData);
+                // دالة مساعدة لدمج القوائم ومنع التكرار (حسب الاسم أو الكود)
+                const mergeArrays = (oldArr = [], newArr = []) => {
+                    const map = new Map();
+                    // نضع القديم أولاً
+                    oldArr.forEach(item => map.set(item.id || item.name, item));
+                    // نحدثه بالجديد أو نضيفه
+                    newArr.forEach(item => {
+                        // نعطي معرفاً جديداً إذا لم يوجد
+                        if (!item.id) item.id = Utils.generateId('imp'); 
+                        map.set(item.id || item.name, item);
+                    });
+                    return Array.from(map.values());
+                };
+
+                // 2. تجميع البيانات الجديدة
+                const newData = {
+                    config: mergedConfig,
+                    // ندمج القوائم (لا نستبدلها بـ [] فارغة إذا كان الملف فارغاً)
+                    courses: imported.courses?.length ? mergeArrays(current.courses, imported.courses) : current.courses,
+                    holidays: mergeArrays(current.holidays, imported.holidays),
+                    periods: mergeArrays(current.periods, imported.periods),
+                    procedures: imported.procedures ? mergeArrays(current.procedures, imported.procedures) : (current.procedures || []),
+                    events: imported.events?.length ? mergeArrays(current.events, imported.events) : current.events
+                };
+
+                // 3. الحفظ وإعادة التحميل
+                await Storage.save(newData);
+                this.data = await Storage.load(); // تأكد من تحميل البيانات المعالجة
                 
-                // إعادة تحميل البيانات في الذاكرة وتحديث الواجهة
-                this.data = await Storage.load();
                 this.renderAll();
-                
-                UIManager.showToast('تم استعادة النسخة الاحتياطية بنجاح', 'success');
+                UIManager.showToast('تم دمج البيانات بنجاح! لم تفقد بياناتك القديمة.', 'success');
             } catch (error) {
                 console.error("Import Error:", error);
-                UIManager.showToast('فشل الاستيراد: الملف تالف أو غير متوافق', 'error');
+                UIManager.showToast('حدث خطأ أثناء معالجة الملف', 'error');
             }
-            // تصفير حقل الإدخال للسماح بإعادة الرفع
-            e.target.value = '';
+            e.target.value = ''; // تصفير الحقل
         };
         reader.readAsText(file);
     },
-
     bindEvents() {
         document.getElementById('openSettings').onclick = () => { this.prepareSettingsForm(); UIManager.toggleModal('settingsModal', true); };
         document.getElementById('addEventBtn').onclick = () => this.openAddEvent(Utils.formatDate(new Date()));
