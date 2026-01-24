@@ -83,63 +83,112 @@ const App = {
 
     // دالة استيراد النسخة الاحتياطية (كانت مفقودة)
     // دالة الاستيراد الذكي (Smart Merge)
+    // دالة استيراد مع تشخيص كامل للأخطاء (Debug Mode)
     async handleFileImport(e) {
+        console.clear(); // تنظيف الكونسول للتركيز على العملية الحالية
+        console.group("🚀 بدء عملية تشخيص الاستيراد");
+
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) {
+            console.error("❌ الخطوة 0: لم يتم اختيار ملف.");
+            console.groupEnd();
+            return;
+        }
+        console.log("✅ الخطوة 0: تم التقاط الملف:", file.name);
 
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
-                const imported = JSON.parse(event.target.result);
-                const current = await Storage.load(); // تحميل البيانات الحالية أولاً
+                // 1. تحليل الملف
+                console.log("🔄 الخطوة 1: محاولة قراءة وتحليل ملف JSON...");
+                let imported;
+                try {
+                    imported = JSON.parse(event.target.result);
+                    console.log("✅ الخطوة 1: نجح التحليل (JSON Valid).");
+                } catch (parseError) {
+                    throw new Error("فشل تحليل JSON. تأكد من سلامة الملف. " + parseError.message);
+                }
 
-                // 1. دمج الإعدادات (نحافظ على القديم إذا لم يوجد جديد)
-                // نضمن بقاء timeMappings لعدم انهيار الواجهة
-                const mergedConfig = {
-                    ...current.config,
-                    ...imported.config,
-                    timeMappings: imported.config?.timeMappings || current.config.timeMappings || DEFAULT_DATA.config.timeMappings
-                };
+                // 2. فحص الإعدادات والتواريخ
+                console.log("🔄 الخطوة 2: فحص بيانات الإعدادات (Config)...");
+                if (!imported.config) {
+                    console.error("❌ الخطوة 2: فشل. الملف لا يحتوي على كائن 'config'.");
+                } else {
+                    console.log(`✅ الخطوة 2: تم العثور على الإعدادات. التاريخ: من ${imported.config.startDate} إلى ${imported.config.endDate}`);
+                }
 
-                // دالة مساعدة لدمج القوائم ومنع التكرار (حسب الاسم أو الكود)
-                const mergeArrays = (oldArr = [], newArr = []) => {
-                    const map = new Map();
-                    // نضع القديم أولاً
-                    oldArr.forEach(item => map.set(item.id || item.name, item));
-                    // نحدثه بالجديد أو نضيفه
-                    newArr.forEach(item => {
-                        // نعطي معرفاً جديداً إذا لم يوجد
-                        if (!item.id) item.id = Utils.generateId('imp'); 
-                        map.set(item.id || item.name, item);
+                // 3. تحميل البيانات الحالية للدمج
+                console.log("🔄 الخطوة 3: جلب البيانات الحالية من المتصفح...");
+                const current = await Storage.load();
+                console.log("✅ الخطوة 3: تم جلب البيانات الحالية.");
+
+                // دالة مساعدة للدمج مع التبليغ
+                const mergeAndReport = (name, oldArr, newArr) => {
+                    if (!newArr) {
+                        console.warn(`⚠️ تحذير في ${name}: القائمة غير موجودة في الملف المستورد. سيتم الاحتفاظ بالقديم.`);
+                        return oldArr || [];
+                    }
+                    console.log(`ℹ️ معالجة ${name}: وجد ${newArr.length} عنصر جديد.`);
+                    
+                    // دمج بسيط لمنع التكرار (حسب الاسم)
+                    const mergedMap = new Map();
+                    (oldArr || []).forEach(i => mergedMap.set(i.name, i));
+                    newArr.forEach(i => {
+                        // إصلاح البيانات الناقصة لتجنب الأخطاء
+                        if (!i.id) i.id = Utils.generateId('imp');
+                        mergedMap.set(i.name, i);
                     });
-                    return Array.from(map.values());
+                    
+                    const result = Array.from(mergedMap.values());
+                    console.log(`✅ تم دمج ${name}. العدد الكلي الآن: ${result.length}`);
+                    return result;
                 };
 
-                // 2. تجميع البيانات الجديدة
+                // 4. تجهيز البيانات الجديدة
                 const newData = {
-                    config: mergedConfig,
-                    // ندمج القوائم (لا نستبدلها بـ [] فارغة إذا كان الملف فارغاً)
-                    courses: imported.courses?.length ? mergeArrays(current.courses, imported.courses) : current.courses,
-                    holidays: mergeArrays(current.holidays, imported.holidays),
-                    periods: mergeArrays(current.periods, imported.periods),
-                    procedures: imported.procedures ? mergeArrays(current.procedures, imported.procedures) : (current.procedures || []),
-                    events: imported.events?.length ? mergeArrays(current.events, imported.events) : current.events
+                    config: { 
+                        ...current.config, 
+                        ...imported.config,
+                        // حماية timeMappings من الضياع
+                        timeMappings: imported.config?.timeMappings || current.config.timeMappings 
+                    },
+                    courses: mergeAndReport('المقررات (courses)', current.courses, imported.courses),
+                    holidays: mergeAndReport('الإجازات (holidays)', current.holidays, imported.holidays),
+                    periods: mergeAndReport('الفترات (periods)', current.periods, imported.periods),
+                    // هنا غالباً المشكلة: إذا كانت procedures مفقودة في الملف
+                    procedures: mergeAndReport('الإجراءات (procedures)', current.procedures, imported.procedures),
+                    events: mergeAndReport('المواعيد (events)', current.events, imported.events)
                 };
 
-                // 3. الحفظ وإعادة التحميل
+                // 5. الحفظ
+                console.log("🔄 الخطوة 5: محاولة الحفظ في قاعدة البيانات...");
                 await Storage.save(newData);
-                this.data = await Storage.load(); // تأكد من تحميل البيانات المعالجة
+                console.log("✅ الخطوة 5: تم الحفظ بنجاح.");
+
+                // 6. تحديث الذاكرة والواجهة
+                console.log("🔄 الخطوة 6: تحديث الواجهة...");
+                this.data = await Storage.load(); // إعادة التحميل للتأكد
                 
-                this.renderAll();
-                UIManager.showToast('تم دمج البيانات بنجاح! لم تفقد بياناتك القديمة.', 'success');
-            } catch (error) {
-                console.error("Import Error:", error);
-                UIManager.showToast('حدث خطأ أثناء معالجة الملف', 'error');
+                try {
+                    this.renderAll();
+                    console.log("✅ الخطوة 6: تم تحديث الواجهة ورسم التقويم بنجاح.");
+                    UIManager.showToast('تم الاستيراد بنجاح! راجع الـ Console للتفاصيل', 'success');
+                } catch (renderError) {
+                    console.error("❌ الخطوة 6: فشل رسم الواجهة (Render Error).", renderError);
+                    console.log("💡 تلميح: هذا الخطأ يعني أن البيانات حُفظت، لكن هناك حقل ناقص يمنع العرض.");
+                }
+
+            } catch (e) {
+                console.error("❌ توقفت العملية بسبب خطأ:", e);
+                UIManager.showToast('فشل الاستيراد. راجع الكونسول', 'error');
+            } finally {
+                console.groupEnd();
+                e.target.value = '';
             }
-            e.target.value = ''; // تصفير الحقل
         };
         reader.readAsText(file);
     },
+    
     bindEvents() {
         document.getElementById('openSettings').onclick = () => { this.prepareSettingsForm(); UIManager.toggleModal('settingsModal', true); };
         document.getElementById('addEventBtn').onclick = () => this.openAddEvent(Utils.formatDate(new Date()));
