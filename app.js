@@ -80,50 +80,57 @@ const App = {
      * تقوم بتوليد المحاضرات تلقائياً طوال الفصل الدراسي
      */
     async handleAiImport() {
-        const jsonArea = document.getElementById('aiImportJson');
-        try {
-            const imported = JSON.parse(jsonArea.value);
-            if (!imported.courses || !imported.lectures) throw new Error();
+    const jsonArea = document.getElementById('aiImportJson');
+    try {
+        const imported = JSON.parse(jsonArea.value);
+        if (!imported.courses || !imported.lectures) throw new Error();
 
-            // 1. إضافة المقررات الجديدة
-            imported.courses.forEach(c => {
-                if (!this.data.courses.find(old => old.code === c.code)) {
-                    this.data.courses.push({ ...c, color: c.color || Utils.getRandomColor() });
-                }
-            });
-
-            // 2. توليد المحاضرات بناءً على الأيام والنطاق الزمني للفصل
-            if (!this.data.config.startDate || !this.data.config.endDate) {
-                return UIManager.showToast('يرجى تحديد تاريخ بداية ونهاية الفصل أولاً', 'error');
+        // 1. معالجة المقررات وضمان وجودها
+        imported.courses.forEach(c => {
+            // التحقق بالكود لضمان عدم التكرار
+            if (!this.data.courses.find(old => old.code === c.code)) {
+                this.data.courses.push({ ...c, color: c.color || Utils.getRandomColor() });
             }
+        });
 
-            imported.lectures.forEach(lec => {
-                const course = this.data.courses.find(c => c.id === lec.courseId);
+        // 2. التحقق من النطاق الزمني
+        if (!this.data.config.startDate || !this.data.config.endDate) {
+            return UIManager.showToast('يرجى تحديد تاريخ بداية ونهاية الفصل أولاً من الإعدادات', 'error');
+        }
+
+        // 3. توليد المحاضرات بربط ذكي
+        imported.lectures.forEach(lec => {
+            // البحث عن بيانات المقرر في الـ JSON المرفق أولاً لمعرفة الكود
+            const jsonCourseData = imported.courses.find(c => c.id === lec.courseId);
+            // البحث عن المقرر الفعلي في النظام باستخدام الكود لضمان الحصول على الـ ID الصحيح
+            const actualCourse = this.data.courses.find(c => c.code === jsonCourseData.code);
+
+            if (actualCourse) {
                 const dates = Utils.getDatesForDay(lec.day, this.data.config.startDate, this.data.config.endDate);
                 
                 dates.forEach(date => {
                     this.data.events.push({
                         id: Utils.generateId('ev'),
-                        courseId: lec.courseId,
-                        title: `${course.name} (${lec.type})`,
+                        courseId: actualCourse.id, // استخدام المعرف الفعلي المخزن في النظام
+                        title: `${actualCourse.name} (${lec.type})`,
                         start: date,
                         end: date,
-                        periods: lec.periods, // تخزين أرقام الحصص
-                        gender: lec.gender,   // تخزين نوع الشعبة (بنين/بنات)
+                        periods: lec.periods,
+                        gender: lec.gender,
                         notes: `شعبة: ${lec.section}`
                     });
                 });
-            });
+            }
+        });
 
-            await Storage.save(this.data);
-            UIManager.showToast('تم استيراد الجدول وتوليد المحاضرات بنجاح', 'success');
-            jsonArea.value = '';
-            this.renderAll();
-        } catch (e) {
-            UIManager.showToast('تنسيق JSON غير صالح، تأكد من نسخ مخرجات الذكاء الاصطناعي بدقة', 'error');
-        }
-    },
-
+        await Storage.save(this.data);
+        UIManager.showToast('تم استيراد الجدول بنجاح', 'success');
+        jsonArea.value = '';
+        this.renderAll();
+    } catch (e) {
+        UIManager.showToast('حدث خطأ في معالجة البيانات، تأكد من صحة الـ JSON أو تعبئة التواريخ', 'error');
+    }
+},
     /**
      * حفظ الإعدادات وأوقات الحصص الـ 12
      */
