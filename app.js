@@ -1,13 +1,13 @@
 /**
- * App.js - المحرك التشغيلي للتقويم الأكاديمي الاحترافي
- * يدير تدفق البيانات، التحقق من النطاق الزمني، والعمليات المتقدمة للمقررات.
+ * app.js - المحرك التشغيلي للتقويم الأكاديمي
+ * يدير منطق الاستيراد الذكي، معالجة وضع رمضان، وتوليد المحاضرات تلقائياً.
  */
 
 const App = {
     data: null,
 
     async init() {
-        // تحميل البيانات من IndexedDB عند تشغيل التطبيق
+        // تحميل البيانات من IndexedDB
         this.data = await Storage.load();
         this.bindEvents();
         this.renderAll();
@@ -16,29 +16,29 @@ const App = {
     renderAll() {
         if (!this.data) return;
         
-        // تحديث حقول التاريخ الأساسية في واجهة الإعدادات
+        // تحديث حقول النطاق الزمني في الواجهة
         if (this.data.config.startDate) {
             document.getElementById('startDate').value = this.data.config.startDate;
             document.getElementById('endDate').value = this.data.config.endDate;
-            
-            this.updateFiltersUI(); 
-            UIManager.updateCourseSelects(this.data.courses);
-            CalendarEngine.render(this.data);
-        } else {
-            CalendarEngine.hideLoading();
         }
+
+        // تحديث حالة زر رمضان بصرياً
+        this.updateRamadanUI();
+        
+        // تحديث الفلاتر وقوائم الاختيار والتقويم
+        this.updateFiltersUI(); 
+        UIManager.updateCourseSelects(this.data.courses);
+        CalendarEngine.render(this.data);
     },
 
     bindEvents() {
-        // إدارة النوافذ المنبثقة (Modals)
+        // إدارة النوافذ المنبثقة
         document.getElementById('openSettings').onclick = () => {
             this.prepareSettingsForm();
             UIManager.toggleModal('settingsModal', true);
         };
         
-        document.getElementById('addEventBtn').onclick = () => {
-            this.openAddEvent(Utils.formatDate(new Date()));
-        };
+        document.getElementById('addEventBtn').onclick = () => this.openAddEvent(Utils.formatDate(new Date()));
         
         document.querySelectorAll('.close-modal').forEach(b => b.onclick = () => {
             UIManager.toggleModal('settingsModal', false);
@@ -47,138 +47,192 @@ const App = {
         
         document.querySelector('.close-detail').onclick = () => UIManager.toggleModal('detailModal', false);
 
-        // إضافة الصفوف الديناميكية في الإعدادات
+        // تبديل تبويبات أوقات الحصص (بنين/بنات/رمضان)
+        document.querySelectorAll('.time-tab-btn').forEach(btn => {
+            btn.onclick = () => UIManager.renderTimeMappingRows(btn.dataset.target);
+        });
+
+        // زر الاستيراد الذكي بالذكاء الاصطناعي
+        document.getElementById('processAiBtn').onclick = () => this.handleAiImport();
+
+        // مفتاح تبديل وضع رمضان في الهيدر
+        document.getElementById('ramadanToggle').onclick = () => this.handleRamadanToggle();
+
+        // إضافة الصفوف الديناميكية
         document.getElementById('addCourseRow').onclick = () => UIManager.createRow('coursesList', 'course');
         document.getElementById('addHolidayRow').onclick = () => UIManager.createRow('holidaysList', 'holiday');
         document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
         document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
 
-        // تبديل نوع الموعد (يوم واحد أو فترة زمنية ممتدة)
-        document.getElementById('typeSingle').onclick = () => this.toggleEventType('single');
-        document.getElementById('typeRange').onclick = () => this.toggleEventType('range');
+        // تسليم النماذج
+        document.getElementById('settingsForm').onsubmit = (e) => this.handleSettingsSubmit(e);
+        document.getElementById('eventForm').onsubmit = (e) => this.handleEventSubmit(e);
 
-        // تسليم النماذج (Forms)
-        document.getElementById('settingsForm').onsubmit = async (e) => await this.handleSettingsSubmit(e);
-        document.getElementById('eventForm').onsubmit = async (e) => await this.handleEventSubmit(e);
-
-        // إدارة البيانات (النسخ الاحتياطي والمشاركة)
-        document.getElementById('exportFull').onclick = () => Utils.downloadJSON(this.data, 'التقويم_الأكاديمي_الكامل.json');
-        document.getElementById('exportCourse').onclick = () => this.handleCourseExport();
-        document.getElementById('importFullBtn').onclick = () => this.triggerImport('full');
-        document.getElementById('importCourseBtn').onclick = () => this.triggerImport('merge');
+        // إدارة البيانات
+        document.getElementById('exportFull').onclick = () => Utils.downloadJSON(this.data, 'نسخة_احتياطية_التقويم.json');
+        document.getElementById('importFullBtn').onclick = () => document.getElementById('universalFilePicker').click();
         document.getElementById('universalFilePicker').onchange = (e) => this.handleFileImport(e);
-        
-        document.getElementById('resetAllData').onclick = async () => await Storage.clear();
+        document.getElementById('resetAllData').onclick = () => Storage.clear();
     },
 
     /**
-     * تبديل واجهة إضافة الموعد بين يوم واحد وفترة زمنية
+     * معالجة الاستيراد الذكي من JSON الذكاء الاصطناعي
+     * تقوم بتوليد المحاضرات تلقائياً طوال الفصل الدراسي
      */
-    toggleEventType(type) {
-        const endContainer = document.getElementById('endDateContainer');
-        const singleBtn = document.getElementById('typeSingle');
-        const rangeBtn = document.getElementById('typeRange');
-        
-        if (type === 'single') {
-            endContainer.classList.add('hidden');
-            singleBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all bg-white text-blue-600 shadow-sm';
-            rangeBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all text-slate-400';
-            document.getElementById('eventEndDate').value = ''; 
-        } else {
-            endContainer.classList.remove('hidden');
-            rangeBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all bg-white text-blue-600 shadow-sm';
-            singleBtn.className = 'flex-1 py-3 rounded-xl text-xs font-black transition-all text-slate-400';
+    async handleAiImport() {
+        const jsonArea = document.getElementById('aiImportJson');
+        try {
+            const imported = JSON.parse(jsonArea.value);
+            if (!imported.courses || !imported.lectures) throw new Error();
+
+            // 1. إضافة المقررات الجديدة
+            imported.courses.forEach(c => {
+                if (!this.data.courses.find(old => old.code === c.code)) {
+                    this.data.courses.push({ ...c, color: c.color || Utils.getRandomColor() });
+                }
+            });
+
+            // 2. توليد المحاضرات بناءً على الأيام والنطاق الزمني للفصل
+            if (!this.data.config.startDate || !this.data.config.endDate) {
+                return UIManager.showToast('يرجى تحديد تاريخ بداية ونهاية الفصل أولاً', 'error');
+            }
+
+            imported.lectures.forEach(lec => {
+                const course = this.data.courses.find(c => c.id === lec.courseId);
+                const dates = Utils.getDatesForDay(lec.day, this.data.config.startDate, this.data.config.endDate);
+                
+                dates.forEach(date => {
+                    this.data.events.push({
+                        id: Utils.generateId('ev'),
+                        courseId: lec.courseId,
+                        title: `${course.name} (${lec.type})`,
+                        start: date,
+                        end: date,
+                        periods: lec.periods, // تخزين أرقام الحصص
+                        gender: lec.gender,   // تخزين نوع الشعبة (بنين/بنات)
+                        notes: `شعبة: ${lec.section}`
+                    });
+                });
+            });
+
+            await Storage.save(this.data);
+            UIManager.showToast('تم استيراد الجدول وتوليد المحاضرات بنجاح', 'success');
+            jsonArea.value = '';
+            this.renderAll();
+        } catch (e) {
+            UIManager.showToast('تنسيق JSON غير صالح، تأكد من نسخ مخرجات الذكاء الاصطناعي بدقة', 'error');
         }
     },
 
-    prepareSettingsForm() {
-        ['coursesList', 'holidaysList', 'periodsList', 'proceduresList'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.innerHTML = '';
-        });
-
-        // بناء الصفوف بناءً على البيانات المخزنة
-        this.data.courses.forEach(c => UIManager.createRow('coursesList', 'course', c));
-        this.data.holidays.forEach(h => UIManager.createRow('holidaysList', 'holiday', h));
-        this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p)); 
-        this.data.procedures.forEach(pr => UIManager.createRow('proceduresList', 'procedure', pr));
-    },
-
+    /**
+     * حفظ الإعدادات وأوقات الحصص الـ 12
+     */
     async handleSettingsSubmit(e) {
         e.preventDefault();
-        const startSem = document.getElementById('startDate').value;
-        const endSem = document.getElementById('endDate').value;
+        const config = this.data.config;
+        config.startDate = document.getElementById('startDate').value;
+        config.endDate = document.getElementById('endDate').value;
 
-        // التحقق من منطقية النطاق الزمني للفصل الدراسي
-        if (startSem >= endSem) {
-            return UIManager.showToast('تاريخ نهاية الفصل يجب أن يكون بعد تاريخ البداية', 'error');
-        }
+        // حفظ تعديلات أوقات الحصص من الجدول
+        const timeRows = document.querySelectorAll('#timeRowsContainer > div');
+        timeRows.forEach(row => {
+            const type = row.dataset.type;
+            const index = parseInt(row.dataset.index);
+            config.timeMappings[type][index] = {
+                start: row.querySelector('.time-start').value,
+                end: row.querySelector('.time-end').value
+            };
+        });
 
-        this.data.config.startDate = startSem;
-        this.data.config.endDate = endSem;
-        
-        // حفظ المقررات
-        this.data.courses = Array.from(document.querySelectorAll('#coursesList > .dynamic-row')).map(row => ({
+        // تحديث المقررات والعناصر الأخرى
+        this.data.courses = Array.from(document.querySelectorAll('#coursesList .dynamic-row')).map(row => ({
             id: row.dataset.id || Utils.generateId('c'),
             name: row.querySelector('.course-name').value,
             code: row.querySelector('.course-code').value,
             color: row.querySelector('.course-color').value
         }));
 
-        // التحقق من وقوع التواريخ العامة ضمن نطاق الفصل الدراسي
-        const isOutside = (date) => date < startSem || date > endSem;
         const categories = ['holidays', 'periods', 'procedures'];
-        
-        for (const cat of categories) {
-            const rows = Array.from(document.querySelectorAll(`#${cat}List > .dynamic-row`));
-            const items = [];
-            for (const row of rows) {
-                const s = row.querySelector('.item-start').value;
-                const e = row.querySelector('.item-end').value;
-
-                if (isOutside(s) || isOutside(e)) {
-                    UIManager.showToast(`تاريخ في قسم ${cat} خارج نطاق الفصل الدراسي`, 'error');
-                    return; 
-                }
-                items.push({ name: row.querySelector('.item-name').value, start: s, end: e });
-            }
-            this.data[cat] = items;
-        }
+        categories.forEach(cat => {
+            this.data[cat] = Array.from(document.querySelectorAll(`#${cat}List .dynamic-row`)).map(row => ({
+                name: row.querySelector('.item-name').value,
+                start: row.querySelector('.item-start').value,
+                end: row.querySelector('.item-end').value
+            }));
+        });
 
         await Storage.save(this.data);
-        UIManager.showToast('تم حفظ الإعدادات بنجاح', 'success');
+        UIManager.showToast('تم حفظ الإعدادات وتحديث المواعيد', 'success');
         this.renderAll();
         UIManager.toggleModal('settingsModal', false);
     },
 
-    openAddEvent(date) {
-        UIManager.updateCourseSelects(this.data.courses);
-        document.getElementById('eventDate').value = date;
-        this.toggleEventType('single'); 
-        UIManager.toggleModal('eventModal', true);
+    handleRamadanToggle() {
+        this.data.config.isRamadanMode = !this.data.config.isRamadanMode;
+        Storage.save(this.data);
+        this.updateRamadanUI();
+        CalendarEngine.render(this.data);
+        const msg = this.data.config.isRamadanMode ? 'تم تفعيل توقيت رمضان' : 'تم العودة للتوقيت الاعتيادي';
+        UIManager.showToast(msg, 'warning');
+    },
+
+    updateRamadanUI() {
+        const btn = document.getElementById('ramadanToggle');
+        const ball = document.getElementById('ramadanToggleBall');
+        if (this.data.config.isRamadanMode) {
+            btn.classList.replace('bg-slate-200', 'bg-amber-400');
+            ball.classList.replace('translate-x-1', 'translate-x-6');
+        } else {
+            btn.classList.replace('bg-amber-400', 'bg-slate-200');
+            ball.classList.replace('translate-x-6', 'translate-x-1');
+        }
+    },
+
+    prepareSettingsForm() {
+        ['coursesList', 'holidaysList', 'periodsList', 'proceduresList'].forEach(id => document.getElementById(id).innerHTML = '');
+        this.data.courses.forEach(c => UIManager.createRow('coursesList', 'course', c));
+        this.data.holidays.forEach(h => UIManager.createRow('holidaysList', 'holiday', h));
+        this.data.periods.forEach(p => UIManager.createRow('periodsList', 'period', p));
+        this.data.procedures.forEach(pr => UIManager.createRow('proceduresList', 'procedure', pr));
+    },
+
+    // الدوال المساعدة للمواعيد اليدوية والفلترة (تم الحفاظ عليها)
+    updateFiltersUI() {
+        const container = document.getElementById('filterContainer');
+        if(!container) return;
+        let html = `
+            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border border-slate-100">
+                <input type="checkbox" checked value="holidays" class="accent-orange-500"> <span class="text-[10px] font-black">الإجازات</span>
+            </label>
+            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border border-slate-100">
+                <input type="checkbox" checked value="periods" class="accent-purple-500"> <span class="text-[10px] font-black">الفترات</span>
+            </label>
+            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border border-slate-100">
+                <input type="checkbox" checked value="procedures" class="accent-emerald-500"> <span class="text-[10px] font-black">الإجراءات</span>
+            </label>`;
+        this.data.courses.forEach(c => {
+            html += `
+                <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border-r-4" style="border-color: ${c.color}">
+                    <input type="checkbox" checked value="${c.id}" style="accent-color:${c.color}">
+                    <span class="text-[10px] font-black">${Utils.escapeHTML(c.name)}</span>
+                </label>`;
+        });
+        container.innerHTML = html;
+        container.querySelectorAll('input').forEach(i => i.onchange = () => CalendarEngine.render(this.data));
     },
 
     async handleEventSubmit(e) {
         e.preventDefault();
-        const startDate = document.getElementById('eventDate').value;
-        const endDate = document.getElementById('eventEndDate').value || startDate;
-
-        // التحقق من تاريخ الموعد الجديد
-        if (startDate < this.data.config.startDate || endDate > this.data.config.endDate) {
-            return UIManager.showToast('لا يمكن إضافة موعد خارج نطاق الفصل الدراسي', 'error');
-        }
-
         this.data.events.push({
             id: Utils.generateId('ev'),
             courseId: document.getElementById('eventCourse').value,
             title: document.getElementById('eventTitle').value,
-            start: startDate,
-            end: endDate,
+            start: document.getElementById('eventDate').value,
+            end: document.getElementById('eventEndDate').value || document.getElementById('eventDate').value,
             notes: document.getElementById('eventNotes').value
         });
-
         await Storage.save(this.data);
-        UIManager.showToast('تمت إضافة الموعد للجدول', 'success');
+        UIManager.showToast('تمت إضافة الموعد', 'success');
         this.renderAll();
         UIManager.toggleModal('eventModal', false);
         e.target.reset();
@@ -187,23 +241,18 @@ const App = {
     showEventDetail(id) {
         const ev = this.data.events.find(e => e.id === id);
         if (!ev) return;
-        
-        const course = this.data.courses.find(c => c.id == ev.courseId);
+        const course = this.data.courses.find(c => c.id === ev.courseId);
         document.getElementById('detailHeader').style.backgroundColor = course ? course.color : '#0F172A';
         document.getElementById('detailCourseName').innerText = ev.title;
         document.getElementById('editTitle').value = ev.title;
         document.getElementById('editNotes').value = ev.notes || '';
-        
-        const dateText = ev.start === ev.end ? ev.start : `${ev.start} ← ${ev.end}`;
-        document.getElementById('detailDateText').innerText = dateText;
-
+        document.getElementById('detailDateText').innerText = ev.start === ev.end ? ev.start : `${ev.start} ← ${ev.end}`;
         UIManager.toggleModal('detailModal', true);
 
         document.getElementById('deleteEvent').onclick = async () => {
-            if(confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
+            if(confirm('حذف هذا الموعد؟')) {
                 this.data.events = this.data.events.filter(e => e.id !== id);
                 await Storage.save(this.data);
-                UIManager.showToast('تم حذف الموعد', 'info');
                 this.renderAll();
                 UIManager.toggleModal('detailModal', false);
             }
@@ -213,84 +262,9 @@ const App = {
             ev.title = document.getElementById('editTitle').value;
             ev.notes = document.getElementById('editNotes').value;
             await Storage.save(this.data);
-            UIManager.showToast('تم تحديث البيانات', 'success');
             this.renderAll();
             UIManager.toggleModal('detailModal', false);
         };
-    },
-
-    updateFiltersUI() {
-        const container = document.getElementById('filterContainer');
-        if(!container) return;
-        
-        let html = `
-            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all">
-                <input type="checkbox" checked value="holidays" class="accent-orange-500">
-                <span class="text-xs font-bold text-slate-600">الإجازات</span>
-            </label>
-            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all">
-                <input type="checkbox" checked value="periods" class="accent-purple-500">
-                <span class="text-xs font-bold text-slate-600">الفترات</span>
-            </label>
-            <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all">
-                <input type="checkbox" checked value="procedures" class="accent-emerald-500">
-                <span class="text-xs font-bold text-slate-600">الإجراءات</span>
-            </label>
-        `;
-        
-        this.data.courses.forEach(c => {
-            html += `
-                <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all" style="border-right: 4px solid ${c.color}">
-                    <input type="checkbox" checked value="${c.id}" style="accent-color:${c.color}">
-                    <span class="text-xs font-bold text-slate-600">${Utils.escapeHTML(c.name)}</span>
-                </label>`;
-        });
-        
-        container.innerHTML = html;
-        container.querySelectorAll('input').forEach(i => i.onchange = () => CalendarEngine.render(this.data));
-    },
-
-    handleCourseExport() {
-        const cid = document.getElementById('exportCourseId').value;
-        const course = this.data.courses.find(c => c.id == cid);
-        if (!course) return UIManager.showToast('الرجاء اختيار مقرر أولاً', 'info');
-        
-        const events = this.data.events.filter(ev => ev.courseId == cid);
-        Utils.downloadJSON({ type: 'course_package', course, events }, `مقرر_${course.name}.json`);
-    },
-
-    triggerImport(mode) {
-        const picker = document.getElementById('universalFilePicker');
-        if(picker) {
-            picker.dataset.mode = mode;
-            picker.click();
-        }
-    },
-
-    handleFileImport(e) {
-        const reader = new FileReader();
-        const mode = e.target.dataset.mode;
-        
-        reader.onload = async (event) => {
-            try {
-                const imported = JSON.parse(event.target.result);
-                if (mode === 'full') {
-                    this.data = { ...DEFAULT_DATA, ...imported };
-                } else {
-                    if (imported.type !== 'course_package') return UIManager.showToast('ملف غير صالح لمقرر', 'error');
-                    if (!this.data.courses.find(c => c.id == imported.course.id)) this.data.courses.push(imported.course);
-                    imported.events.forEach(ev => {
-                        if (!this.data.events.find(old => old.start === ev.start && old.title === ev.title)) this.data.events.push(ev);
-                    });
-                }
-                await Storage.save(this.data);
-                UIManager.showToast('تمت العملية بنجاح، جاري التحديث...', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } catch (err) { 
-                UIManager.showToast('خطأ في معالجة الملف', 'error');
-            }
-        };
-        reader.readAsText(e.target.files[0]);
     }
 };
 
