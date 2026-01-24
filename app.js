@@ -1,5 +1,5 @@
 /**
- * app.js - المحرك التشغيلي للتقويم الأكاديمي
+ * app.js - المحرك التشغيلي المطور للتقويم الأكاديمي
  * يدير منطق الاستيراد الذكي، معالجة وضع رمضان، وتوليد المحاضرات تلقائياً.
  */
 
@@ -80,57 +80,59 @@ const App = {
      * تقوم بتوليد المحاضرات تلقائياً طوال الفصل الدراسي
      */
     async handleAiImport() {
-    const jsonArea = document.getElementById('aiImportJson');
-    try {
-        const imported = JSON.parse(jsonArea.value);
-        if (!imported.courses || !imported.lectures) throw new Error();
+        const jsonArea = document.getElementById('aiImportJson');
+        try {
+            const imported = JSON.parse(jsonArea.value);
+            if (!imported.courses || !imported.lectures) throw new Error();
 
-        // 1. معالجة المقررات وضمان وجودها
-        imported.courses.forEach(c => {
-            // التحقق بالكود لضمان عدم التكرار
-            if (!this.data.courses.find(old => old.code === c.code)) {
-                this.data.courses.push({ ...c, color: c.color || Utils.getRandomColor() });
+            // 1. التحقق من وجود نطاق زمني
+            if (!this.data.config.startDate || !this.data.config.endDate) {
+                return UIManager.showToast('يرجى تحديد تاريخ بداية ونهاية الفصل أولاً من الإعدادات وحفظها', 'error');
             }
-        });
 
-        // 2. التحقق من النطاق الزمني
-        if (!this.data.config.startDate || !this.data.config.endDate) {
-            return UIManager.showToast('يرجى تحديد تاريخ بداية ونهاية الفصل أولاً من الإعدادات', 'error');
-        }
+            // 2. معالجة المقررات وضمان ربطها بالكود لمنع التكرار
+            imported.courses.forEach(c => {
+                const existing = this.data.courses.find(old => old.code === c.code);
+                if (!existing) {
+                    this.data.courses.push({ ...c, color: c.color || Utils.getRandomColor() });
+                }
+            });
 
-        // 3. توليد المحاضرات بربط ذكي
-        imported.lectures.forEach(lec => {
-            // البحث عن بيانات المقرر في الـ JSON المرفق أولاً لمعرفة الكود
-            const jsonCourseData = imported.courses.find(c => c.id === lec.courseId);
-            // البحث عن المقرر الفعلي في النظام باستخدام الكود لضمان الحصول على الـ ID الصحيح
-            const actualCourse = this.data.courses.find(c => c.code === jsonCourseData.code);
+            // 3. توليد المحاضرات بربط ذكي (Smart Binding)
+            imported.lectures.forEach(lec => {
+                // البحث عن كود المقرر في الـ JSON لمعرفة أي مقرر يقصد
+                const jsonCourseInfo = imported.courses.find(c => c.id === lec.courseId);
+                // البحث عن المقرر الفعلي في النظام باستخدام الكود لضمان الربط الصحيح
+                const actualCourse = this.data.courses.find(c => c.code === jsonCourseInfo.code);
 
-            if (actualCourse) {
-                const dates = Utils.getDatesForDay(lec.day, this.data.config.startDate, this.data.config.endDate);
-                
-                dates.forEach(date => {
-                    this.data.events.push({
-                        id: Utils.generateId('ev'),
-                        courseId: actualCourse.id, // استخدام المعرف الفعلي المخزن في النظام
-                        title: `${actualCourse.name} (${lec.type})`,
-                        start: date,
-                        end: date,
-                        periods: lec.periods,
-                        gender: lec.gender,
-                        notes: `شعبة: ${lec.section}`
+                if (actualCourse) {
+                    // استخراج كافة التواريخ لهذا اليوم في الفصل الدراسي
+                    const dates = Utils.getDatesForDay(lec.day, this.data.config.startDate, this.data.config.endDate);
+                    
+                    dates.forEach(date => {
+                        this.data.events.push({
+                            id: Utils.generateId('ev'),
+                            courseId: actualCourse.id, // نستخدم المعرف الموجود فعلياً في النظام
+                            title: `${actualCourse.name} (${lec.type})`,
+                            start: date,
+                            end: date,
+                            periods: lec.periods, // تخزين أرقام الحصص لعرض الوقت الصحيح
+                            gender: lec.gender,   // تخزين نوع الشعبة (male/female)
+                            notes: `شعبة: ${lec.section}`
+                        });
                     });
-                });
-            }
-        });
+                }
+            });
 
-        await Storage.save(this.data);
-        UIManager.showToast('تم استيراد الجدول بنجاح', 'success');
-        jsonArea.value = '';
-        this.renderAll();
-    } catch (e) {
-        UIManager.showToast('حدث خطأ في معالجة البيانات، تأكد من صحة الـ JSON أو تعبئة التواريخ', 'error');
-    }
-},
+            await Storage.save(this.data);
+            UIManager.showToast('تم استيراد الجدول بنجاح وتوليد المواعيد لكامل الفصل', 'success');
+            jsonArea.value = '';
+            this.renderAll();
+        } catch (e) {
+            UIManager.showToast('تنسيق JSON غير صالح أو خطأ في الربط، تأكد من البيانات والتواريخ', 'error');
+        }
+    },
+
     /**
      * حفظ الإعدادات وأوقات الحصص الـ 12
      */
@@ -140,7 +142,7 @@ const App = {
         config.startDate = document.getElementById('startDate').value;
         config.endDate = document.getElementById('endDate').value;
 
-        // حفظ تعديلات أوقات الحصص من الجدول
+        // حفظ تعديلات أوقات الحصص من شبكة التعديل
         const timeRows = document.querySelectorAll('#timeRowsContainer > div');
         timeRows.forEach(row => {
             const type = row.dataset.type;
@@ -151,7 +153,7 @@ const App = {
             };
         });
 
-        // تحديث المقررات والعناصر الأخرى
+        // تحديث المقررات
         this.data.courses = Array.from(document.querySelectorAll('#coursesList .dynamic-row')).map(row => ({
             id: row.dataset.id || Utils.generateId('c'),
             name: row.querySelector('.course-name').value,
@@ -159,6 +161,7 @@ const App = {
             color: row.querySelector('.course-color').value
         }));
 
+        // تحديث الإجازات والفترات
         const categories = ['holidays', 'periods', 'procedures'];
         categories.forEach(cat => {
             this.data[cat] = Array.from(document.querySelectorAll(`#${cat}List .dynamic-row`)).map(row => ({
@@ -203,25 +206,24 @@ const App = {
         this.data.procedures.forEach(pr => UIManager.createRow('proceduresList', 'procedure', pr));
     },
 
-    // الدوال المساعدة للمواعيد اليدوية والفلترة (تم الحفاظ عليها)
     updateFiltersUI() {
         const container = document.getElementById('filterContainer');
         if(!container) return;
         let html = `
             <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border border-slate-100">
-                <input type="checkbox" checked value="holidays" class="accent-orange-500"> <span class="text-[10px] font-black">الإجازات</span>
+                <input type="checkbox" checked value="holidays" class="accent-orange-500"> <span class="text-[10px] font-black text-slate-600">الإجازات</span>
             </label>
             <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border border-slate-100">
-                <input type="checkbox" checked value="periods" class="accent-purple-500"> <span class="text-[10px] font-black">الفترات</span>
+                <input type="checkbox" checked value="periods" class="accent-purple-500"> <span class="text-[10px] font-black text-slate-600">الفترات</span>
             </label>
             <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border border-slate-100">
-                <input type="checkbox" checked value="procedures" class="accent-emerald-500"> <span class="text-[10px] font-black">الإجراءات</span>
+                <input type="checkbox" checked value="procedures" class="accent-emerald-500"> <span class="text-[10px] font-black text-slate-600">الإجراءات</span>
             </label>`;
         this.data.courses.forEach(c => {
             html += `
                 <label class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl cursor-pointer shadow-sm hover:bg-slate-50 transition-all border-r-4" style="border-color: ${c.color}">
                     <input type="checkbox" checked value="${c.id}" style="accent-color:${c.color}">
-                    <span class="text-[10px] font-black">${Utils.escapeHTML(c.name)}</span>
+                    <span class="text-[10px] font-black text-slate-600">${Utils.escapeHTML(c.name)}</span>
                 </label>`;
         });
         container.innerHTML = html;
@@ -239,7 +241,7 @@ const App = {
             notes: document.getElementById('eventNotes').value
         });
         await Storage.save(this.data);
-        UIManager.showToast('تمت إضافة الموعد', 'success');
+        UIManager.showToast('تمت إضافة الموعد يدوياً', 'success');
         this.renderAll();
         UIManager.toggleModal('eventModal', false);
         e.target.reset();
@@ -257,7 +259,7 @@ const App = {
         UIManager.toggleModal('detailModal', true);
 
         document.getElementById('deleteEvent').onclick = async () => {
-            if(confirm('حذف هذا الموعد؟')) {
+            if(confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
                 this.data.events = this.data.events.filter(e => e.id !== id);
                 await Storage.save(this.data);
                 this.renderAll();
