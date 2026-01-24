@@ -1,11 +1,12 @@
 /**
- * app.js - النسخة النهائية المصححة
+ * app.js - النسخة الكاملة والمصححة (Fixed Version)
  */
 
 const App = {
     data: null,
 
     async init() {
+        // تحميل البيانات عند بدء التشغيل
         this.data = await Storage.load();
         this.bindEvents();
         this.renderAll();
@@ -13,14 +14,82 @@ const App = {
 
     renderAll() {
         if (!this.data) return;
+        
+        // تحديث تواريخ البداية والنهاية في الواجهة
         if (this.data.config.startDate) {
             document.getElementById('startDate').value = this.data.config.startDate;
             document.getElementById('endDate').value = this.data.config.endDate;
         }
+
         this.updateRamadanUI();
         this.updateFiltersUI(); 
         UIManager.updateCourseSelects(this.data.courses);
         CalendarEngine.render(this.data);
+    },
+
+    /**
+     * دالة استيراد الملفات (تمت إضافتها لإصلاح المشكلة)
+     */
+    async handleFileImport(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const imported = JSON.parse(event.target.result);
+                const current = await Storage.load();
+
+                // دالة مساعدة لدمج البيانات ومنع التكرار
+                const merge = (oldArr, newArr) => {
+                    const map = new Map();
+                    // 1. إضافة البيانات القديمة
+                    (oldArr || []).forEach(i => map.set(i.id || i.name, i));
+                    // 2. دمج البيانات الجديدة
+                    (newArr || []).forEach(i => {
+                        const cleanItem = {
+                            ...i,
+                            // توليد معرف إذا كان مفقوداً
+                            id: i.id || Utils.generateId('imp'),
+                            // ضمان وجود قيم نصية للتواريخ
+                            start: i.start || "",
+                            end: i.end || ""
+                        };
+                        map.set(cleanItem.id || cleanItem.name, cleanItem);
+                    });
+                    return Array.from(map.values());
+                };
+
+                // بناء كائن البيانات الجديد
+                const newData = {
+                    config: { 
+                        ...current.config, 
+                        ...imported.config,
+                        // حماية إعدادات الوقت من الحذف
+                        timeMappings: imported.config?.timeMappings || current.config.timeMappings 
+                    },
+                    courses: merge(current.courses, imported.courses),
+                    holidays: merge(current.holidays, imported.holidays),
+                    periods: merge(current.periods, imported.periods),
+                    procedures: merge(current.procedures, imported.procedures),
+                    events: merge(current.events, imported.events)
+                };
+
+                // حفظ البيانات في قاعدة البيانات
+                await Storage.save(newData);
+                
+                UIManager.showToast('تم دمج البيانات بنجاح! جاري التحديث...', 'success');
+                
+                // إعادة تحميل الصفحة لضمان ظهور كافة البيانات بشكل صحيح
+                setTimeout(() => location.reload(), 1000);
+
+            } catch (error) {
+                console.error("Import Error:", error);
+                UIManager.showToast('فشل الاستيراد: تأكد من صحة الملف', 'error');
+            }
+            e.target.value = ''; // تصفير الحقل للسماح بإعادة الرفع
+        };
+        reader.readAsText(file);
     },
 
     async handleAiImport() {
@@ -29,19 +98,17 @@ const App = {
             const imported = JSON.parse(jsonArea.value);
             if (!imported.courses || !imported.lectures) throw new Error();
 
-            // التحقق من النطاق الزمني أولاً
             if (!this.data.config.startDate || !this.data.config.endDate) {
-                return UIManager.showToast('يرجى تحديد تاريخ بداية ونهاية الفصل من الإعدادات وحفظها أولاً', 'error');
+                return UIManager.showToast('يرجى تحديد تاريخ بداية ونهاية الفصل أولاً', 'error');
             }
 
-            // خريطة لربط المعرفات في الـ JSON بالمعرفات الفعلية في النظام
             const idMap = {};
 
-            // 1. معالجة المقررات
+            // معالجة المقررات
             imported.courses.forEach(c => {
                 const existing = this.data.courses.find(old => old.code === c.code);
                 if (existing) {
-                    idMap[c.id] = existing.id; // ربط المعرف الجديد بالقديم الموجود فعلياً
+                    idMap[c.id] = existing.id;
                 } else {
                     const newId = c.id || Utils.generateId('c');
                     this.data.courses.push({ ...c, id: newId, color: c.color || Utils.getRandomColor() });
@@ -49,7 +116,7 @@ const App = {
                 }
             });
 
-            // 2. توليد المحاضرات بناءً على الربط الصحيح
+            // توليد المحاضرات
             imported.lectures.forEach(lec => {
                 const actualCourseId = idMap[lec.courseId];
                 const course = this.data.courses.find(c => c.id === actualCourseId);
@@ -72,168 +139,40 @@ const App = {
             });
 
             await Storage.save(this.data);
-            UIManager.showToast('تم استيراد الجدول بنجاح وتوليد المواعيد', 'success');
+            UIManager.showToast('تم استيراد الجدول بنجاح', 'success');
             jsonArea.value = '';
             this.renderAll();
         } catch (e) {
-            UIManager.showToast('فشل الاستيراد: تأكد من صحة الـ JSON ووجود التواريخ', 'error');
+            UIManager.showToast('فشل الاستيراد الذكي', 'error');
             console.error(e);
         }
     },
 
-    // دالة استيراد النسخة الاحتياطية (كانت مفقودة)
-    // دالة الاستيراد الذكي (Smart Merge)
-    // دالة استيراد مع تشخيص كامل للأخطاء (Debug Mode)
-    // دالة استيراد + تشخيص عميق لقاعدة البيانات
-    async handleFileImport(e) {
-        console.clear();
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // 🛑 1. تجاوز دالة الحفظ الأصلية لكشف الأخطاء المخفية
-        Storage.save = async function(data) {
-            console.group("🛠️ تشخيص عملية الحفظ (Deep Debug)");
-            
-            // فحص عينة من البيانات قبل الإرسال
-            console.log("📦 البيانات المجهزة للحفظ:", data);
-            
-            if (data.holidays && data.holidays.length > 0) {
-                console.log("🧐 فحص عينة إجازة:", data.holidays[0]);
-                if (data.holidays[0].name === undefined) console.error("⚠️ تحذير: اسم الإجازة مفقود!");
-            }
-
-            try {
-                // استخدام Transaction لضمان الحفظ أو الفشل الكامل
-                await db.transaction('rw', db.settings, db.data, async () => {
-                    await db.settings.put({ id: 'main_config', ...data.config });
-                    console.log("✅ تم حفظ الإعدادات");
-
-                    const categories = ['courses', 'holidays', 'periods', 'procedures', 'events'];
-                    for (const cat of categories) {
-                        const items = data[cat] || [];
-                        // تحويل البيانات إلى كائنات "خام" للتخلص من أي Proxies قد تسبب مشاكل
-                        const rawItems = JSON.parse(JSON.stringify(items)); 
-                        await db.data.put({ category: cat, items: rawItems });
-                        console.log(`✅ تم حفظ جدول ${cat} - عدد العناصر: ${rawItems.length}`);
-                    }
-                });
-                console.log("🎉 تمت عملية الـ Transaction بنجاح تام في قاعدة البيانات.");
-            } catch (err) {
-                console.error("🔥 فشل الحقيقي في قاعدة البيانات:", err);
-                throw err; // إعادة رمي الخطأ ليراه كود الاستيراد
-            } finally {
-                console.groupEnd();
-            }
-        };
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const imported = JSON.parse(event.target.result);
-                const current = await Storage.load();
-
-                // دالة الدمج (كما هي)
-                const merge = (oldArr, newArr) => {
-                    const map = new Map();
-                    (oldArr || []).forEach(i => map.set(i.id || i.name, i));
-                    (newArr || []).forEach(i => {
-                        // تصحيح البيانات: التأكد من وجود ID وقيم نصية صحيحة
-                        const cleanItem = {
-                            ...i,
-                            id: i.id || Utils.generateId('imp'),
-                            // ضمان أن التواريخ نصوص وليست undefined
-                            start: i.start || "",
-                            end: i.end || ""
-                        };
-                        map.set(cleanItem.id || cleanItem.name, cleanItem);
-                    });
-                    return Array.from(map.values());
-                };
-
-                const newData = {
-                    config: { ...current.config, ...imported.config, timeMappings: imported.config?.timeMappings || current.config.timeMappings },
-                    courses: merge(current.courses, imported.courses),
-                    holidays: merge(current.holidays, imported.holidays),
-                    periods: merge(current.periods, imported.periods),
-                    procedures: merge(current.procedures, imported.procedures),
-                    events: merge(current.events, imported.events)
-                };
-
-                console.log("🔄 محاولة الحفظ الآن...");
-                await Storage.save(newData); // الآن سينادي دالة الحفظ المعدلة أعلاه
-                
-                this.data = await Storage.load();
-                this.renderAll();
-                UIManager.showToast('تم الاستيراد والحفظ الحقيقي بنجاح', 'success');
-                
-            } catch (e) {
-                console.error("❌ توقفت العملية:", e);
-                UIManager.showToast(`فشل الحفظ: ${e.message}`, 'error');
-            }
-            e.target.value = '';
-        };
-        reader.readAsText(file);
-    },
-                // 4. تجهيز البيانات الجديدة
-                const newData = {
-                    config: { 
-                        ...current.config, 
-                        ...imported.config,
-                        // حماية timeMappings من الضياع
-                        timeMappings: imported.config?.timeMappings || current.config.timeMappings 
-                    },
-                    courses: mergeAndReport('المقررات (courses)', current.courses, imported.courses),
-                    holidays: mergeAndReport('الإجازات (holidays)', current.holidays, imported.holidays),
-                    periods: mergeAndReport('الفترات (periods)', current.periods, imported.periods),
-                    // هنا غالباً المشكلة: إذا كانت procedures مفقودة في الملف
-                    procedures: mergeAndReport('الإجراءات (procedures)', current.procedures, imported.procedures),
-                    events: mergeAndReport('المواعيد (events)', current.events, imported.events)
-                };
-
-                // 5. الحفظ
-                console.log("🔄 الخطوة 5: محاولة الحفظ في قاعدة البيانات...");
-                await Storage.save(newData);
-                console.log("✅ الخطوة 5: تم الحفظ بنجاح.");
-
-                // 6. تحديث الذاكرة والواجهة
-                console.log("🔄 الخطوة 6: تحديث الواجهة...");
-                this.data = await Storage.load(); // إعادة التحميل للتأكد
-                
-                try {
-                    this.renderAll();
-                    console.log("✅ الخطوة 6: تم تحديث الواجهة ورسم التقويم بنجاح.");
-                    UIManager.showToast('تم الاستيراد بنجاح! راجع الـ Console للتفاصيل', 'success');
-                } catch (renderError) {
-                    console.error("❌ الخطوة 6: فشل رسم الواجهة (Render Error).", renderError);
-                    console.log("💡 تلميح: هذا الخطأ يعني أن البيانات حُفظت، لكن هناك حقل ناقص يمنع العرض.");
-                }
-
-            } catch (e) {
-                console.error("❌ توقفت العملية بسبب خطأ:", e);
-                UIManager.showToast('فشل الاستيراد. راجع الكونسول', 'error');
-            } finally {
-                console.groupEnd();
-                e.target.value = '';
-            }
-        };
-        reader.readAsText(file);
-    },
-    
     bindEvents() {
         document.getElementById('openSettings').onclick = () => { this.prepareSettingsForm(); UIManager.toggleModal('settingsModal', true); };
         document.getElementById('addEventBtn').onclick = () => this.openAddEvent(Utils.formatDate(new Date()));
         document.querySelectorAll('.close-modal').forEach(b => b.onclick = () => { UIManager.toggleModal('settingsModal', false); UIManager.toggleModal('eventModal', false); });
+        
+        // أزرار الاستيراد
         document.getElementById('processAiBtn').onclick = () => this.handleAiImport();
+        
+        // ربط زر استيراد الملف بالدالة الجديدة
+        const filePicker = document.getElementById('universalFilePicker');
+        document.getElementById('importFullBtn').onclick = () => filePicker.click();
+        filePicker.onchange = (e) => this.handleFileImport(e);
+
         document.getElementById('ramadanToggle').onclick = () => this.handleRamadanToggle();
+        
+        // أزرار الإضافة في الإعدادات
         document.getElementById('addCourseRow').onclick = () => UIManager.createRow('coursesList', 'course');
         document.getElementById('addHolidayRow').onclick = () => UIManager.createRow('holidaysList', 'holiday');
         document.getElementById('addPeriodRow').onclick = () => UIManager.createRow('periodsList', 'period');
         document.getElementById('addProcedureRow').onclick = () => UIManager.createRow('proceduresList', 'procedure');
+        
         document.getElementById('settingsForm').onsubmit = (e) => this.handleSettingsSubmit(e);
         document.getElementById('eventForm').onsubmit = (e) => this.handleEventSubmit(e);
         document.getElementById('exportFull').onclick = () => Utils.downloadJSON(this.data, 'التقويم.json');
-        document.getElementById('importFullBtn').onclick = () => document.getElementById('universalFilePicker').click();
-        document.getElementById('universalFilePicker').onchange = (e) => this.handleFileImport(e);
+        
         document.getElementById('resetAllData').onclick = () => Storage.clear();
         document.querySelectorAll('.time-tab-btn').forEach(btn => { btn.onclick = () => UIManager.renderTimeMappingRows(btn.dataset.target); });
     },
