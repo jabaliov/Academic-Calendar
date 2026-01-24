@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>التقويم الأكاديمي الاحترافي | النسخة المطورة</title>
+    <title>التقويم الأكاديمي الاحترافي</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <script src="tailwind.js"></script>
     <script src="lucide.js"></script>
@@ -14,6 +14,7 @@
         .calendar-shadow { box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.05); }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .ramadan-active { border: 2px solid #fbbf24; background-color: #fffbeb !important; }
     </style>
 </head>
 <body class="bg-[#F8FAFC] text-slate-800 min-h-screen">
@@ -38,11 +39,18 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-black text-slate-900 leading-none">مخططي الجامعي</h1>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">الإصدار الاحترافي 2026</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">نظام إدارة المحاضرات الذكي</p>
                 </div>
             </div>
             
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl border border-amber-100">
+                    <span class="text-[10px] font-black text-amber-600 uppercase">وضع رمضان</span>
+                    <button id="ramadanToggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 transition-colors focus:outline-none">
+                        <span id="ramadanToggleBall" class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
+                    </button>
+                </div>
+
                 <button id="openSettings" class="p-2.5 text-slate-500 hover:bg-slate-100 rounded-2xl transition-all" title="الإعدادات">
                     <i data-lucide="settings" class="w-6 h-6"></i>
                 </button>
@@ -60,22 +68,23 @@
                 <i data-lucide="sliders-horizontal" class="w-4 h-4 text-blue-600"></i>
                 <h2 class="text-[11px] font-black text-slate-400 uppercase tracking-widest">تصفية العرض الذكي</h2>
             </div>
-            <div id="filterContainer" class="flex flex-wrap gap-3">
-                </div>
+            <div id="filterContainer" class="flex flex-wrap gap-3"></div>
         </section>
 
-        <div id="calendarGrid" class="space-y-12">
-            </div>
+        <div id="calendarGrid" class="space-y-12"></div>
     </main>
 
     <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 hidden z-[100] backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-white rounded-[3rem] w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+        <div class="bg-white rounded-[3rem] w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
             <div class="p-8 border-b border-slate-100 flex justify-between items-center">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
                         <i data-lucide="database" class="text-slate-600 w-6 h-6"></i>
                     </div>
-                    <h3 class="text-2xl font-black text-slate-800 tracking-tight">إعدادات النظام الأكاديمي</h3>
+                    <div>
+                        <h3 class="text-2xl font-black text-slate-800 tracking-tight">إعدادات النظام الأكاديمي</h3>
+                        <p class="text-[10px] text-slate-400 font-bold">قم بتهيئة بيئتك وتعديل أوقات المحاضرات</p>
+                    </div>
                 </div>
                 <div class="flex gap-2">
                     <button id="resetAllData" class="px-4 py-2 text-red-500 text-xs font-bold hover:bg-red-50 rounded-xl transition-colors">إعادة ضبط المصنع</button>
@@ -84,19 +93,51 @@
             </div>
 
             <form id="settingsForm" class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                
+                <section class="mb-12 bg-blue-50/30 p-8 rounded-[2.5rem] border border-blue-100/50">
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="sparkles" class="text-blue-600 w-5 h-5"></i>
+                        <h4 class="text-[11px] font-black text-blue-600 uppercase tracking-widest">الاستيراد الذكي (AI JSON)</h4>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4 font-medium">قم بلصق كود الـ JSON الناتج من الذكاء الاصطناعي هنا لتوليد جدول المحاضرات فوراً:</p>
+                    <textarea id="aiImportJson" class="w-full h-32 bg-white border-2 border-dashed border-blue-200 rounded-2xl p-4 text-[10px] font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder='{ "courses": [...], "lectures": [...] }'></textarea>
+                    <button type="button" id="processAiBtn" class="mt-4 bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black hover:bg-blue-700 transition-all">تحليل واستيراد البيانات</button>
+                </section>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     <div class="space-y-10">
                         <section>
-                            <h4 class="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-4">النطاق الزمني للفصل</h4>
-                            <div class="grid grid-cols-2 gap-4 bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
+                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">النطاق الزمني للفصل</h4>
+                            <div class="grid grid-cols-2 gap-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
                                 <div>
-                                    <label class="block text-[10px] font-bold text-blue-900/50 mb-2">تاريخ البداية</label>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-2">تاريخ البداية</label>
                                     <input type="date" id="startDate" required class="w-full bg-white border-none rounded-2xl p-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-500 transition-all">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-bold text-blue-900/50 mb-2">تاريخ النهاية</label>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-2">تاريخ النهاية</label>
                                     <input type="date" id="endDate" required class="w-full bg-white border-none rounded-2xl p-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-500 transition-all">
                                 </div>
+                            </div>
+                        </section>
+
+                        <section>
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-widest">تعديل مواعيد الحصص (12 حصة)</h4>
+                                <div class="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                                    <button type="button" class="time-tab-btn active px-3 py-1 text-[9px] font-black rounded-md bg-white shadow-sm" data-target="male">بنين</button>
+                                    <button type="button" class="time-tab-btn px-3 py-1 text-[9px] font-black rounded-md" data-target="female">بنات</button>
+                                    <button type="button" class="time-tab-btn px-3 py-1 text-[9px] font-black rounded-md" data-target="ramadan">رمضان</button>
+                                </div>
+                            </div>
+                            <div id="timeMappingGrid" class="bg-white border border-slate-100 rounded-[2rem] overflow-hidden">
+                                <div class="grid grid-cols-4 bg-slate-50 p-3 text-[9px] font-black text-slate-400 uppercase text-center border-b border-slate-100">
+                                    <div>الحصة</div>
+                                    <div>البداية</div>
+                                    <div>النهاية</div>
+                                    <div>الحالة</div>
+                                </div>
+                                <div id="timeRowsContainer" class="max-h-[400px] overflow-y-auto custom-scrollbar">
+                                    </div>
                             </div>
                         </section>
 
@@ -133,45 +174,20 @@
                             </div>
                             <div id="proceduresList" class="space-y-3"></div>
                         </section>
-                    </div>
-                </div>
 
-                <div class="mt-16 pt-8 border-t border-slate-100">
-                    <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">إدارة البيانات والمشاركة الاحترافية</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 flex flex-col justify-between">
-                            <div>
-                                <i data-lucide="archive" class="w-6 h-6 text-blue-600 mb-3"></i>
-                                <span class="block font-black text-slate-800">النسخ الاحتياطي الكامل</span>
-                                <p class="text-[10px] font-bold text-slate-400 mt-1 italic">تصدير أو استيراد كافة الإعدادات والمواعيد في ملف واحد.</p>
+                        <div class="mt-10 pt-8 border-t border-slate-100">
+                            <div class="grid grid-cols-2 gap-4">
+                                <button type="button" id="exportFull" class="bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black hover:bg-black transition-all">تصدير النسخة الاحتياطية</button>
+                                <button type="button" id="importFullBtn" class="border-2 border-slate-900 text-slate-900 py-4 rounded-2xl text-[10px] font-black hover:bg-slate-50 transition-all">استيراد نسخة سابقة</button>
                             </div>
-                            <div class="flex gap-2 mt-4">
-                                <button type="button" id="exportFull" class="flex-1 bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black hover:bg-black transition-all">تصدير الكل</button>
-                                <button type="button" id="importFullBtn" class="flex-1 border-2 border-slate-900 text-slate-900 py-3 rounded-xl text-[10px] font-black hover:bg-slate-100 transition-all">استيراد الكل</button>
-                            </div>
-                        </div>
-
-                        <div class="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 flex flex-col justify-between">
-                            <div>
-                                <i data-lucide="share-2" class="w-6 h-6 text-blue-600 mb-3"></i>
-                                <span class="block font-black text-slate-800">مشاركة مقرر منفرد</span>
-                                <p class="text-[10px] font-bold text-slate-400 mt-1 italic">تصدير مواعيد مقرر واحد فقط لمشاركتها، أو دمج ملف مقرر خارجي.</p>
-                            </div>
-                            <div class="space-y-2 mt-4">
-                                <div class="flex gap-2">
-                                    <select id="exportCourseId" class="flex-1 bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm focus:ring-2 focus:ring-blue-500 appearance-none"></select>
-                                    <button type="button" id="exportCourse" class="bg-blue-600 text-white px-4 py-3 rounded-xl text-[10px] font-black hover:bg-blue-700">تصدير</button>
-                                </div>
-                                <button type="button" id="importCourseBtn" class="w-full border-2 border-blue-600 text-blue-600 py-3 rounded-xl text-[10px] font-black hover:bg-blue-50 transition-all">استيراد ودمج مواعيد مقرر خارجي</button>
-                            </div>
+                            <input type="file" id="universalFilePicker" class="hidden" accept=".json">
                         </div>
                     </div>
-                    <input type="file" id="universalFilePicker" class="hidden" accept=".json">
                 </div>
             </form>
 
             <div class="p-8 border-t border-slate-100 glass-effect">
-                <button type="submit" form="settingsForm" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2rem] text-lg shadow-2xl shadow-blue-200 active:scale-[0.98] transition-all">حفظ الإعدادات وتوليد التقويم</button>
+                <button type="submit" form="settingsForm" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2rem] text-lg shadow-2xl shadow-blue-200 active:scale-[0.98] transition-all">حفظ الإعدادات وتحديث التقويم</button>
             </div>
         </div>
     </div>
@@ -182,7 +198,6 @@
                 <h3 class="text-2xl font-black text-slate-800 tracking-tight">موعد جديد</h3>
                 <button class="close-modal text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            
             <form id="eventForm" class="space-y-6">
                 <div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-3">نوع الموعد</label>
@@ -191,7 +206,6 @@
                         <button type="button" id="typeRange" class="flex-1 py-3 rounded-xl text-xs font-black transition-all text-slate-400">فترة زمنية</button>
                     </div>
                 </div>
-
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">تاريخ البداية</label>
@@ -202,22 +216,18 @@
                         <input type="date" id="eventEndDate" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">المقرر الدراسي</label>
                     <select id="eventCourse" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold focus:ring-2 focus:ring-blue-500 appearance-none"></select>
                 </div>
-
                 <div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">عنوان الموعد</label>
                     <input type="text" id="eventTitle" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold focus:ring-2 focus:ring-blue-500" placeholder="مثلاً: تسليم البحث">
                 </div>
-
                 <div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">ملاحظات إضافية</label>
                     <textarea id="eventNotes" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold focus:ring-2 focus:ring-blue-500 h-24 resize-none" placeholder="أضف تفاصيل الموعد هنا..."></textarea>
                 </div>
-
                 <button type="submit" class="w-full bg-blue-600 text-white font-black py-5 rounded-[2rem] text-lg shadow-xl shadow-blue-100 active:scale-95 transition-all">حفظ في التقويم</button>
             </form>
         </div>
